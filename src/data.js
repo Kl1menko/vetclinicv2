@@ -1,0 +1,153 @@
+// PetCare mock data
+export const SERVICES = [
+  { id: 'therapy', name: 'Терапія', icon: 'heart', color: 'teal',
+    short: 'Первинний огляд та контроль стану',
+    desc: 'Повний терапевтичний прийом, призначення та контроль лікування хронічних і гострих станів.',
+    items: [
+      { name: 'Первинний прийом терапевта', price: 600, duration: 30 },
+      { name: 'Повторний прийом', price: 450, duration: 20 },
+      { name: 'Виписка рецепту', price: 200, duration: 10 },
+    ]},
+  { id: 'surgery', name: 'Хірургія', icon: 'scalpel', color: 'rose',
+    short: 'Планові й ургентні втручання',
+    desc: 'Стерилізація, видалення новоутворень, ортопедичні та м\'якотканинні операції.',
+    items: [
+      { name: 'Стерилізація кота', price: 1800, duration: 60 },
+      { name: 'Стерилізація собаки', price: 3200, duration: 90 },
+      { name: 'Видалення новоутворень', price: 2500, duration: 75 },
+    ]},
+  { id: 'dentistry', name: 'Стоматологія', icon: 'tooth', color: 'amber',
+    short: 'Зуби, ясна, санація',
+    desc: 'Ультразвукова чистка, лікування пародонтиту, видалення зубів під седацією.',
+    items: [
+      { name: 'УЗ чистка зубів', price: 2200, duration: 60 },
+      { name: 'Видалення зуба', price: 800, duration: 30 },
+    ]},
+  { id: 'lab', name: 'Лабораторія', icon: 'flask', color: 'violet',
+    short: 'Забір і розбір аналізів',
+    desc: 'Загальний та біохімічний аналізи крові, сечі, гормональні дослідження. Результати онлайн.',
+    items: [
+      { name: 'Загальний аналіз крові', price: 350, duration: 15 },
+      { name: 'Біохімія крові', price: 850, duration: 15 },
+      { name: 'Гормональна панель', price: 1200, duration: 15 },
+    ]},
+  { id: 'imaging', name: 'УЗД та рентген', icon: 'wave', color: 'teal',
+    short: 'Уточнення клінічної картини',
+    desc: 'Сучасне обладнання для УЗ-діагностики, цифрового рентгену та ехокардіографії.',
+    items: [
+      { name: 'УЗД органів черевної порожнини', price: 700, duration: 30 },
+      { name: 'Рентген (1 проєкція)', price: 450, duration: 15 },
+      { name: 'ЕхоКГ', price: 950, duration: 30 },
+    ]},
+  { id: 'ophthalmology', name: 'Офтальмологія', icon: 'eye', color: 'coral',
+    short: 'Стан очей і повік',
+    desc: 'Офтальмологічний огляд, тонометрія, лікування інфекцій та травм ока.',
+    items: [
+      { name: 'Прийом офтальмолога', price: 700, duration: 30 },
+      { name: 'Тонометрія', price: 250, duration: 10 },
+    ]},
+  { id: 'hygiene', name: 'Гігієна', icon: 'sparkle', color: 'green',
+    short: 'Догляд та профілактика',
+    desc: 'Стрижка, миття, обробка від паразитів, чистка вух.',
+    items: [
+      { name: 'Купання + сушіння', price: 500, duration: 45 },
+      { name: 'Стрижка', price: 800, duration: 60 },
+      { name: 'Чистка параанальних залоз', price: 300, duration: 15 },
+    ]},
+  { id: 'oncology', name: 'Онкологія', icon: 'shield', color: 'rose',
+    short: 'Оцінка та маршрутизація',
+    desc: 'Діагностика новоутворень, біопсія, консультація щодо лікування.',
+    items: [
+      { name: 'Прийом онколога', price: 900, duration: 45 },
+      { name: 'Тонкоголкова біопсія', price: 1100, duration: 30 },
+    ]},
+  { id: 'hospital', name: 'Стаціонар', icon: 'home', color: 'violet',
+    short: 'Нагляд і підтримка стану',
+    desc: 'Денний та цілодобовий стаціонар з постійним наглядом лікаря.',
+    items: [
+      { name: 'Денне перебування', price: 800, duration: 480 },
+      { name: 'Доба у стаціонарі', price: 1500, duration: 1440 },
+    ]},
+];
+
+export const DOCTORS = [
+  { id: 'd1', name: 'Марта Коваль', role: 'Терапевт, УЗД-діагност', exp: 12, services: ['therapy','imaging'],
+    bio: 'Спеціалізується на діагностиці хронічних станів, веденні літніх тварин та УЗД.',
+    schedule: ['Пн 10:00–18:00', 'Ср 10:00–18:00', 'Пт 10:00–18:00'] },
+  { id: 'd2', name: 'Іван Рудницький', role: 'Хірург', exp: 15, services: ['surgery','oncology'],
+    bio: 'Планові та ургентні операції, м\'якотканинна хірургія, ортопедія.',
+    schedule: ['Вт 09:00–17:00', 'Чт 09:00–17:00', 'Сб 10:00–14:00'] },
+  { id: 'd3', name: 'Ольга Середа', role: 'Стоматолог', exp: 8, services: ['dentistry'],
+    bio: 'Лікування пародонтиту, ультразвукова чистка, видалення зубів під седацією.',
+    schedule: ['Пн 12:00–18:00', 'Ср 12:00–18:00'] },
+  { id: 'd4', name: 'Дмитро Кравець', role: 'Офтальмолог', exp: 9, services: ['ophthalmology'],
+    bio: 'Захворювання очей, травми, кератит, корекція повік.',
+    schedule: ['Вт 10:00–16:00', 'Пт 10:00–16:00'] },
+  { id: 'd5', name: 'Анна Гарасим', role: 'Дерматолог-алерголог', exp: 7, services: ['therapy','hygiene'],
+    bio: 'Алергії, шкірні захворювання, дерматити.',
+    schedule: ['Чт 11:00–17:00', 'Сб 10:00–14:00'] },
+  { id: 'd6', name: 'Тарас Левчук', role: 'Анестезіолог', exp: 10, services: ['surgery','dentistry'],
+    bio: 'Безпечна анестезія, моніторинг під час операцій.',
+    schedule: ['За викликом'] },
+];
+
+export const ARTICLES = [
+  { id: 'a1', title: 'Як підготувати тварину до першого візиту', tag: 'Поради', read: 4,
+    excerpt: 'Прості кроки, щоб зробити прийом спокійним для вас і вашого улюбленця.',
+    date: '12 квітня 2026' },
+  { id: 'a2', title: 'Календар вакцинації котів і собак', tag: 'Вакцинація', read: 6,
+    excerpt: 'Коли ставити щеплення, чим відрізняються комплексні препарати.',
+    date: '03 квітня 2026' },
+  { id: 'a3', title: 'Ознаки болю у тварин, які власники часто пропускають', tag: 'Здоров\'я', read: 5,
+    excerpt: 'Зміна поведінки, апетиту, постави — на що звертати увагу.',
+    date: '28 березня 2026' },
+  { id: 'a4', title: 'Харчування літніх собак: що змінити після 7 років', tag: 'Харчування', read: 7,
+    excerpt: 'Калорійність, білок, добавки для суглобів — короткий гід.',
+    date: '20 березня 2026' },
+  { id: 'a5', title: 'Чищення зубів вдома: як привчити кота', tag: 'Догляд', read: 4,
+    excerpt: 'Поетапний план, без стресу і боротьби.',
+    date: '15 березня 2026' },
+  { id: 'a6', title: 'Що робити при отруєнні тварини: перші 30 хвилин', tag: 'Невідкладна допомога', read: 5,
+    excerpt: 'Чек-лист дій до приходу до клініки.',
+    date: '08 березня 2026' },
+];
+
+export const REVIEWS = [
+  { name: 'Ірина К.', pet: 'Кіт Барсік', rating: 5, text: 'Уважна команда, все пояснили простою мовою. Барсіка прийняли вчасно, не довелося чекати.', date: '18 квітня' },
+  { name: 'Олег В.', pet: 'Собака Рекс', rating: 5, text: 'Зробили операцію Рексу — все пройшло чудово. Кабінет з історією звернень — дуже зручно.', date: '14 квітня' },
+  { name: 'Наталя М.', pet: 'Кіт Сімба', rating: 5, text: 'Записалась онлайн за 2 хвилини. Ольга — найкращий стоматолог, обережна і професійна.', date: '10 квітня' },
+  { name: 'Андрій П.', pet: 'Собака Лессі', rating: 4, text: 'Доступні ціни, привітний персонал. Парковка трохи незручна — це єдиний мінус.', date: '02 квітня' },
+];
+
+// Admin mock data
+export const APPOINTMENTS = [
+  { id: 'ap1', client: 'Ірина Ковальчук', pet: 'Барсік', petType: 'Кіт', service: 'Терапія — повторний прийом', doctor: 'Марта Коваль', date: '2026-04-26', time: '10:00', status: 'confirmed', price: 450 },
+  { id: 'ap2', client: 'Олег Вознюк', pet: 'Рекс', petType: 'Собака', service: 'УЗД', doctor: 'Марта Коваль', date: '2026-04-26', time: '11:00', status: 'in-progress', price: 700 },
+  { id: 'ap3', client: 'Наталя Мельник', pet: 'Сімба', petType: 'Кіт', service: 'Чистка зубів', doctor: 'Ольга Середа', date: '2026-04-26', time: '13:30', status: 'waiting', price: 2200 },
+  { id: 'ap4', client: 'Андрій Петренко', pet: 'Лессі', petType: 'Собака', service: 'Стерилізація', doctor: 'Іван Рудницький', date: '2026-04-26', time: '14:00', status: 'confirmed', price: 3200 },
+  { id: 'ap5', client: 'Марія Стасів', pet: 'Чарлі', petType: 'Собака', service: 'Вакцинація', doctor: 'Анна Гарасим', date: '2026-04-26', time: '16:00', status: 'confirmed', price: 850 },
+  { id: 'ap6', client: 'Дмитро Литвин', pet: 'Мурка', petType: 'Кіт', service: 'Прийом офтальмолога', doctor: 'Дмитро Кравець', date: '2026-04-27', time: '10:30', status: 'confirmed', price: 700 },
+  { id: 'ap7', client: 'Софія Бойко', pet: 'Луна', petType: 'Собака', service: 'Аналізи крові', doctor: 'Марта Коваль', date: '2026-04-27', time: '09:30', status: 'confirmed', price: 850 },
+  { id: 'ap8', client: 'Віталій Гриб', pet: 'Том', petType: 'Кіт', service: 'Первинний прийом', doctor: 'Анна Гарасим', date: '2026-04-25', time: '15:00', status: 'completed', price: 600 },
+  { id: 'ap9', client: 'Леся Калинич', pet: 'Спайк', petType: 'Собака', service: 'Стрижка', doctor: '—', date: '2026-04-25', time: '12:00', status: 'completed', price: 800 },
+  { id: 'ap10', client: 'Юрій Шевчук', pet: 'Бусик', petType: 'Кіт', service: 'УЗД серця', doctor: 'Марта Коваль', date: '2026-04-25', time: '11:30', status: 'cancelled', price: 950 },
+];
+
+export const CLIENTS = [
+  { id: 'c1', name: 'Ірина Ковальчук', phone: '+380 67 123 45 67', email: 'irina.k@example.com', pets: 1, visits: 12, since: '2023', status: 'active' },
+  { id: 'c2', name: 'Олег Вознюк', phone: '+380 50 234 56 78', email: 'oleg.v@example.com', pets: 2, visits: 8, since: '2024', status: 'active' },
+  { id: 'c3', name: 'Наталя Мельник', phone: '+380 63 345 67 89', email: 'natalya.m@example.com', pets: 1, visits: 15, since: '2022', status: 'active' },
+  { id: 'c4', name: 'Андрій Петренко', phone: '+380 67 456 78 90', email: 'andriy.p@example.com', pets: 1, visits: 4, since: '2025', status: 'active' },
+  { id: 'c5', name: 'Марія Стасів', phone: '+380 50 567 89 01', email: 'maria.s@example.com', pets: 3, visits: 22, since: '2021', status: 'active' },
+  { id: 'c6', name: 'Дмитро Литвин', phone: '+380 63 678 90 12', email: 'dmytro.l@example.com', pets: 1, visits: 3, since: '2025', status: 'new' },
+  { id: 'c7', name: 'Софія Бойко', phone: '+380 67 789 01 23', email: 'sofia.b@example.com', pets: 1, visits: 6, since: '2024', status: 'active' },
+];
+
+export const PETS = [
+  { id: 'p1', name: 'Барсік', species: 'Кіт', breed: 'Британський', age: 5, weight: 4.8, owner: 'Ірина Ковальчук', sterilized: true, lastVisit: '2026-04-12', alerts: ['Алергія на курку'] },
+  { id: 'p2', name: 'Рекс', species: 'Собака', breed: 'Лабрадор', age: 7, weight: 32, owner: 'Олег Вознюк', sterilized: true, lastVisit: '2026-04-20', alerts: [] },
+  { id: 'p3', name: 'Сімба', species: 'Кіт', breed: 'Мейн-кун', age: 3, weight: 6.2, owner: 'Наталя Мельник', sterilized: false, lastVisit: '2026-03-30', alerts: [] },
+  { id: 'p4', name: 'Лессі', species: 'Собака', breed: 'Колі', age: 2, weight: 18, owner: 'Андрій Петренко', sterilized: false, lastVisit: '2026-02-15', alerts: ['Чутливе травлення'] },
+  { id: 'p5', name: 'Чарлі', species: 'Собака', breed: 'Спанієль', age: 4, weight: 12, owner: 'Марія Стасів', sterilized: true, lastVisit: '2026-04-05', alerts: [] },
+];
+
