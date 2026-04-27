@@ -1,32 +1,55 @@
 // Public pages — part 2: Booking, About, Contacts, Prices, Articles, Profile
-import React, { useState as uS2, useMemo as uM2 } from 'react';
+import React, { useState as uS2, useMemo as uM2, useEffect as uE2 } from 'react';
 import { Icon, PetIllustration, Avatar, StatusPill, Stars } from './components.jsx';
-import { SERVICES, DOCTORS, ARTICLES, PETS, APPOINTMENTS } from './data.js';
+import { useStore } from './store.jsx';
 
 // =================================================================
 // BOOKING — form + calendar side-by-side
 // =================================================================
 export const BookingPage = ({ go, showToast }) => {
+  const { services, doctors, appointments, addAppointment, currentUser, settings } = useStore();
   const [step, setStep] = uS2(1);
   const [form, setForm] = uS2({
     petName:'', petSpecies:'cat', petBreed:'', petAge:'',
     service:'', doctor:'', date:'', time:'',
-    name:'', phone:'', email:'', notes:'',
+    name: currentUser?.name || '', phone: currentUser?.phone || '', email: currentUser?.email || '', notes:'',
   });
   const [errors, setErrors] = uS2({});
 
-  // Generate days
+  // Schedule lookup: settings.schedule is ordered Mon..Sun
+  const scheduleByDow = uM2(() => {
+    const order = ['Понеділок','Вівторок','Середа','Четвер','Пʼятниця','Субота','Неділя'];
+    const map = {};
+    (settings?.schedule || []).forEach(row => { map[row.day] = row; });
+    return order.map(name => map[name] || { day:name, from:'—', to:'—' });
+  }, [settings]);
+  const isOpenDow = (jsDow) => {
+    // jsDow: 0=Sun..6=Sat → schedule index Mon..Sun
+    const idx = jsDow === 0 ? 6 : jsDow - 1;
+    const row = scheduleByDow[idx];
+    return row && row.from !== '—' && row.to !== '—';
+  };
+
+  // Generate days starting from today
   const days = uM2(() => {
     const arr = [];
-    const today = new Date('2026-04-26');
+    const today = new Date(); today.setHours(0,0,0,0);
     for (let i = 0; i < 14; i++) {
       const d = new Date(today); d.setDate(today.getDate() + i);
       arr.push(d);
     }
     return arr;
   }, []);
-  const slots = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
-  const busy = ['10:00','11:30','14:00','15:30'];
+  const allSlots = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
+  const slotsForDate = uM2(() => {
+    if (!form.date) return allSlots;
+    const dow = new Date(form.date).getDay();
+    const idx = dow === 0 ? 6 : dow - 1;
+    const row = scheduleByDow[idx];
+    if (!row || row.from === '—' || row.to === '—') return [];
+    return allSlots.filter(s => s >= row.from && s <= row.to);
+  }, [form.date, scheduleByDow]);
+  const busy = appointments.filter(a => a.date === form.date).map(a => a.time);
 
   const update = (k, v) => setForm(f => ({...f, [k]: v}));
   const next = () => {
@@ -51,6 +74,15 @@ export const BookingPage = ({ go, showToast }) => {
     if (!/^\+?[\d\s\-()]{10,}$/.test(form.phone)) e.phone = 'Невірний номер';
     setErrors(e);
     if (Object.keys(e).length === 0) {
+      const result = addAppointment({
+        ...form,
+        name: form.name || currentUser?.name,
+        petType: ({ cat:'Кіт', dog:'Собака', rabbit:'Кролик', other:'Інше' })[form.petSpecies] || form.petSpecies,
+      });
+      if (!result.ok) {
+        showToast(result.error);
+        return;
+      }
       setStep(5);
       showToast('Запис створено!');
     }
@@ -72,21 +104,21 @@ export const BookingPage = ({ go, showToast }) => {
       <section style={{padding:'40px 0 96px'}}>
         <div className="container">
           {/* Stepper */}
-          <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:28, maxWidth:720}}>
+          <div className="booking-stepper" style={{display:'flex', alignItems:'center', gap:12, marginBottom:28, maxWidth:720}}>
             {['Тварина','Послуга','Час','Контакти','Готово'].map((s, i) => {
               const n = i + 1;
               const done = n < step, active = n === step;
               return (
                 <React.Fragment key={i}>
-                  <div style={{display:'flex', alignItems:'center', gap:8, flex:'0 0 auto'}}>
-                    <div style={{width:28, height:28, borderRadius:'50%', display:'grid', placeItems:'center', fontSize:13, fontWeight:700,
+                  <div className="booking-stepper-item" data-active={active ? '1' : '0'} style={{display:'flex', alignItems:'center', gap:8, flex:'0 0 auto'}}>
+                    <div style={{width:28, height:28, borderRadius:'50%', display:'grid', placeItems:'center', fontSize:13, fontWeight:700, flexShrink:0,
                       background: done?'var(--teal-600)':active?'var(--ink-900)':'var(--ink-100)',
                       color: done||active?'#fff':'var(--ink-500)'}}>
                       {done ? <Icon name="check" size={14} color="#fff"/> : n}
                     </div>
-                    <div style={{fontSize:13, fontWeight: active?700:500, color: done||active?'var(--ink-900)':'var(--ink-500)'}}>{s}</div>
+                    <div className="booking-stepper-label" style={{fontSize:13, fontWeight: active?700:500, color: done||active?'var(--ink-900)':'var(--ink-500)'}}>{s}</div>
                   </div>
-                  {i < 4 && <div style={{flex:1, height:2, background: done?'var(--teal-600)':'var(--ink-100)', borderRadius:2}}/>}
+                  {i < 4 && <div className="booking-stepper-bar" style={{flex:1, height:2, background: done?'var(--teal-600)':'var(--ink-100)', borderRadius:2}}/>}
                 </React.Fragment>
               );
             })}
@@ -135,7 +167,7 @@ export const BookingPage = ({ go, showToast }) => {
                   <h2 style={{fontSize:24, marginBottom:6}}>Оберіть послугу</h2>
                   <p style={{color:'var(--ink-500)', marginBottom:20, fontSize:14}}>Можна обрати лікаря або довірити вибір реєстратору.</p>
                   <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10, marginBottom:18}}>
-                    {SERVICES.map(s => (
+                    {services.map(s => (
                       <button key={s.id} onClick={()=>update('service', s.id)}
                         style={{padding:14, borderRadius:14, border: form.service===s.id?'2px solid var(--teal-500)':'1.5px solid var(--ink-200)', background: form.service===s.id?'var(--teal-50)':'var(--paper)', cursor:'pointer', display:'flex', alignItems:'center', gap:12, textAlign:'left'}}>
                         <div style={{width:40, height:40, borderRadius:10, background:`var(--${s.color}-100)`, color:`var(--${s.color}-${s.color==='amber'||s.color==='green'?'500':'600'})`, display:'grid', placeItems:'center'}}>
@@ -152,7 +184,7 @@ export const BookingPage = ({ go, showToast }) => {
                   <label className="label">Лікар (за бажанням)</label>
                   <select className="input" value={form.doctor} onChange={e=>update('doctor', e.target.value)}>
                     <option value="">Будь-який доступний</option>
-                    {DOCTORS.filter(d => !form.service || d.services.includes(form.service)).map(d => (
+                    {doctors.filter(d => !form.service || d.services.includes(form.service)).map(d => (
                       <option key={d.id} value={d.id}>{d.name} — {d.role}</option>
                     ))}
                   </select>
@@ -169,13 +201,13 @@ export const BookingPage = ({ go, showToast }) => {
                       const key = d.toISOString().slice(0,10);
                       const dn = d.getDate();
                       const wd = weekDays[(d.getDay()+6)%7];
-                      const isWeekend = d.getDay() === 0;
+                      const closed = !isOpenDow(d.getDay());
                       const sel = form.date === key;
                       return (
-                        <button key={i} disabled={isWeekend} onClick={()=>update('date', key)}
+                        <button key={i} disabled={closed} onClick={()=>update('date', key)}
                           style={{padding:'10px 6px', borderRadius:12, border: sel?'2px solid var(--teal-500)':'1.5px solid var(--ink-100)',
-                            background: sel?'var(--teal-50)':isWeekend?'var(--ink-50)':'var(--paper)', cursor: isWeekend?'not-allowed':'pointer',
-                            opacity: isWeekend?.4:1, display:'flex', flexDirection:'column', alignItems:'center'}}>
+                            background: sel?'var(--teal-50)':closed?'var(--ink-50)':'var(--paper)', cursor: closed?'not-allowed':'pointer',
+                            opacity: closed?.4:1, display:'flex', flexDirection:'column', alignItems:'center'}}>
                           <div style={{fontSize:11, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase'}}>{wd}</div>
                           <div style={{fontFamily:'var(--font-display)', fontSize:18, fontWeight:700}}>{dn}</div>
                           <div style={{fontSize:10, color:'var(--ink-500)'}}>{monthNames[d.getMonth()]}</div>
@@ -185,8 +217,9 @@ export const BookingPage = ({ go, showToast }) => {
                   </div>
                   {errors.date && <div className="field-error" style={{marginBottom:14}}>{errors.date}</div>}
                   <label className="label">Час</label>
+                  {form.date && slotsForDate.length === 0 && <div className="field-error" style={{marginBottom:10}}>Цього дня клініка не працює.</div>}
                   <div style={{display:'grid', gridTemplateColumns:'repeat(6,1fr)', gap:8}}>
-                    {slots.map(t => {
+                    {slotsForDate.map(t => {
                       const isBusy = busy.includes(t);
                       const sel = form.time === t;
                       return (
@@ -212,18 +245,18 @@ export const BookingPage = ({ go, showToast }) => {
                   <div style={{display:'grid', gap:14}}>
                     <div>
                       <label className="label">Ім'я</label>
-                      <input className="input" value={form.name} onChange={e=>update('name', e.target.value)} placeholder="Ірина Ковальчук"/>
+                      <input className="input" autoComplete="name" value={form.name} onChange={e=>update('name', e.target.value)} placeholder="Ірина Ковальчук"/>
                       {errors.name && <div className="field-error">{errors.name}</div>}
                     </div>
                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:14}}>
                       <div>
                         <label className="label">Телефон</label>
-                        <input className="input" value={form.phone} onChange={e=>update('phone', e.target.value)} placeholder="+380 67 ..."/>
+                        <input className="input" type="tel" autoComplete="tel" inputMode="tel" value={form.phone} onChange={e=>update('phone', e.target.value)} placeholder="+380 67 ..."/>
                         {errors.phone && <div className="field-error">{errors.phone}</div>}
                       </div>
                       <div>
                         <label className="label">Email (за бажанням)</label>
-                        <input className="input" value={form.email} onChange={e=>update('email', e.target.value)} placeholder="email@..."/>
+                        <input className="input" type="email" autoComplete="email" value={form.email} onChange={e=>update('email', e.target.value)} placeholder="email@..."/>
                       </div>
                     </div>
                     <div>
@@ -244,7 +277,7 @@ export const BookingPage = ({ go, showToast }) => {
                   <div style={{padding:18, background:'var(--ink-25)', borderRadius:14, marginBottom:24, textAlign:'left', maxWidth:380, margin:'0 auto 24px'}}>
                     <div style={{fontSize:11, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:8}}>Деталі запису</div>
                     <div style={{display:'flex', justifyContent:'space-between', padding:'4px 0', fontSize:14}}><span style={{color:'var(--ink-500)'}}>Тварина</span><span style={{fontWeight:600}}>{form.petName}</span></div>
-                    <div style={{display:'flex', justifyContent:'space-between', padding:'4px 0', fontSize:14}}><span style={{color:'var(--ink-500)'}}>Послуга</span><span style={{fontWeight:600}}>{SERVICES.find(s=>s.id===form.service)?.name}</span></div>
+                    <div style={{display:'flex', justifyContent:'space-between', padding:'4px 0', fontSize:14}}><span style={{color:'var(--ink-500)'}}>Послуга</span><span style={{fontWeight:600}}>{services.find(s=>s.id===form.service)?.name}</span></div>
                     <div style={{display:'flex', justifyContent:'space-between', padding:'4px 0', fontSize:14}}><span style={{color:'var(--ink-500)'}}>Дата і час</span><span style={{fontWeight:600}}>{form.date} · {form.time}</span></div>
                   </div>
                   <button className="btn btn-primary" onClick={()=>go('home')}>На головну</button>
@@ -278,14 +311,14 @@ export const BookingPage = ({ go, showToast }) => {
                   <div style={{width:40, height:40, borderRadius:10, background:'var(--coral-100)', color:'var(--coral-600)', display:'grid', placeItems:'center'}}><Icon name="heart" size={18}/></div>
                   <div>
                     <div style={{fontSize:11, color:'var(--ink-500)'}}>Послуга</div>
-                    <div style={{fontWeight:600, fontSize:14}}>{SERVICES.find(s=>s.id===form.service)?.name || '—'}</div>
+                    <div style={{fontWeight:600, fontSize:14}}>{services.find(s=>s.id===form.service)?.name || '—'}</div>
                   </div>
                 </div>
                 <div style={{display:'flex', alignItems:'center', gap:12}}>
                   <div style={{width:40, height:40, borderRadius:10, background:'var(--violet-100)', color:'var(--violet-500)', display:'grid', placeItems:'center'}}><Icon name="user" size={18}/></div>
                   <div>
                     <div style={{fontSize:11, color:'var(--ink-500)'}}>Лікар</div>
-                    <div style={{fontWeight:600, fontSize:14}}>{DOCTORS.find(d=>d.id===form.doctor)?.name || 'Будь-який'}</div>
+                    <div style={{fontWeight:600, fontSize:14}}>{doctors.find(d=>d.id===form.doctor)?.name || 'Будь-який'}</div>
                   </div>
                 </div>
                 <div style={{display:'flex', alignItems:'center', gap:12}}>
@@ -299,7 +332,7 @@ export const BookingPage = ({ go, showToast }) => {
               {form.service && (
                 <div style={{marginTop:18, paddingTop:18, borderTop:'1px solid var(--ink-100)'}}>
                   <div style={{display:'flex', justifyContent:'space-between', fontSize:13, color:'var(--ink-500)', marginBottom:4}}><span>Орієнтовна вартість</span></div>
-                  <div style={{fontFamily:'var(--font-display)', fontSize:24, fontWeight:700}}>від {SERVICES.find(s=>s.id===form.service)?.items[0].price} ₴</div>
+                  <div style={{fontFamily:'var(--font-display)', fontSize:24, fontWeight:700}}>від {services.find(s=>s.id===form.service)?.items[0].price} ₴</div>
                 </div>
               )}
             </div>
@@ -314,6 +347,7 @@ export const BookingPage = ({ go, showToast }) => {
 // ABOUT
 // =================================================================
 export const AboutPage = ({ go, openBooking }) => {
+  const { doctors } = useStore();
   return (
     <div data-screen-label="About">
       <section style={{padding:'72px 0 48px', background:'var(--teal-50)'}}>
@@ -347,10 +381,14 @@ export const AboutPage = ({ go, openBooking }) => {
           <div className="chip chip-coral" style={{marginBottom:14}}>Команда</div>
           <h2 style={{fontSize:42, marginBottom:36}}>Усі лікарі</h2>
           <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16}}>
-            {DOCTORS.map(d=>(
+            {doctors.map(d=>(
               <div key={d.id} className="card" style={{padding:0, overflow:'hidden', border:'1px solid var(--ink-100)', boxShadow:'none'}}>
-                <div className="stripe-bg" style={{height:200, background:'var(--teal-100)', display:'grid', placeItems:'center'}}>
-                  <Avatar name={d.name} size={96}/>
+                <div style={{height:200, background:'var(--teal-100)', overflow:'hidden'}}>
+                  {d.photo ? (
+                    <img src={d.photo} alt={d.name} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+                  ) : (
+                    <div className="stripe-bg" style={{height:'100%', display:'grid', placeItems:'center'}}><Avatar name={d.name} size={96}/></div>
+                  )}
                 </div>
                 <div style={{padding:22}}>
                   <div style={{fontFamily:'var(--font-display)', fontWeight:600, fontSize:20, marginBottom:4}}>{d.name}</div>
@@ -392,6 +430,7 @@ export const AboutPage = ({ go, openBooking }) => {
 // CONTACTS
 // =================================================================
 export const ContactsPage = ({ go, openBooking, showToast }) => {
+  const { addMessage } = useStore();
   const [form, setForm] = uS2({name:'', phone:'', message:''});
   const [errors, setErrors] = uS2({});
   const submit = () => {
@@ -401,6 +440,7 @@ export const ContactsPage = ({ go, openBooking, showToast }) => {
     if (!form.message) e.message = 'Введіть повідомлення';
     setErrors(e);
     if (Object.keys(e).length === 0) {
+      addMessage(form);
       showToast('Дякуємо! Ми зв\'яжемося найближчим часом.');
       setForm({name:'', phone:'', message:''});
     }
@@ -411,7 +451,7 @@ export const ContactsPage = ({ go, openBooking, showToast }) => {
         <div className="container">
           <div className="chip chip-teal" style={{marginBottom:14}}>Контакти</div>
           <h1 style={{fontSize:54, letterSpacing:'-0.03em', marginBottom:14}}>Як нас знайти</h1>
-          <p style={{fontSize:17, color:'var(--ink-600)', maxWidth:560}}>Ми в центрі Львова, поряд із зупинкою «Личаківська». Безкоштовна парковка для клієнтів.</p>
+          <p style={{fontSize:17, color:'var(--ink-600)', maxWidth:560}}>Ми на вулиці Околична, 10 у Львові. Безкоштовна парковка для клієнтів.</p>
         </div>
       </section>
 
@@ -422,19 +462,19 @@ export const ContactsPage = ({ go, openBooking, showToast }) => {
               <div style={{display:'grid', gap:18}}>
                 <div style={{display:'flex', gap:14}}>
                   <div style={{width:44, height:44, borderRadius:12, background:'var(--teal-100)', color:'var(--teal-600)', display:'grid', placeItems:'center', flexShrink:0}}><Icon name="pin"/></div>
-                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Адреса</div><div style={{fontWeight:600}}>вул. Личаківська, 42</div><div style={{fontSize:13, color:'var(--ink-500)'}}>Львів, 79000</div></div>
+                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Адреса</div><div style={{fontWeight:600}}>вул. Околична, 10</div><div style={{fontSize:13, color:'var(--ink-500)'}}>Львів, 79000</div></div>
                 </div>
                 <div style={{display:'flex', gap:14}}>
                   <div style={{width:44, height:44, borderRadius:12, background:'var(--coral-100)', color:'var(--coral-600)', display:'grid', placeItems:'center', flexShrink:0}}><Icon name="phone"/></div>
-                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Телефон</div><div style={{fontWeight:600}}>+380 67 123 45 67</div><div style={{fontSize:13, color:'var(--ink-500)'}}>Реєстратура · Пн–Сб</div></div>
+                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Телефон</div><a href="tel:+380636798977" style={{fontWeight:600, color:'inherit'}}>+380 63 679 89 77</a><div style={{fontSize:13, color:'var(--ink-500)'}}>Реєстратура · Пн–Пт</div></div>
                 </div>
                 <div style={{display:'flex', gap:14}}>
                   <div style={{width:44, height:44, borderRadius:12, background:'var(--violet-100)', color:'var(--violet-500)', display:'grid', placeItems:'center', flexShrink:0}}><Icon name="mail"/></div>
-                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Email</div><div style={{fontWeight:600}}>hello@petcare.ua</div></div>
+                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Email</div><a href="mailto:hello@ultravet.ua" style={{fontWeight:600, color:'inherit'}}>hello@ultravet.ua</a></div>
                 </div>
                 <div style={{display:'flex', gap:14}}>
                   <div style={{width:44, height:44, borderRadius:12, background:'var(--amber-100)', color:'var(--amber-400)', display:'grid', placeItems:'center', flexShrink:0}}><Icon name="clock"/></div>
-                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Графік</div><div style={{fontWeight:600}}>Пн–Пт 09:00–19:00</div><div style={{fontSize:13, color:'var(--ink-500)'}}>Сб 10:00–18:00 · Нд вихідний</div></div>
+                  <div><div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, textTransform:'uppercase', marginBottom:4}}>Графік</div><div style={{fontWeight:600}}>Пн–Пт 09:00–18:00</div><div style={{fontSize:13, color:'var(--ink-500)'}}>Сб–Нд за попереднім записом</div></div>
                 </div>
               </div>
             </div>
@@ -442,11 +482,11 @@ export const ContactsPage = ({ go, openBooking, showToast }) => {
               <h3 style={{fontSize:20, marginBottom:14}}>Зворотний зв'язок</h3>
               <div style={{display:'grid', gap:12}}>
                 <div>
-                  <input className="input" placeholder="Ваше ім'я" value={form.name} onChange={e=>setForm({...form, name:e.target.value})}/>
+                  <input className="input" autoComplete="name" placeholder="Ваше ім'я" value={form.name} onChange={e=>setForm({...form, name:e.target.value})}/>
                   {errors.name && <div className="field-error">{errors.name}</div>}
                 </div>
                 <div>
-                  <input className="input" placeholder="Телефон" value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})}/>
+                  <input className="input" type="tel" autoComplete="tel" inputMode="tel" placeholder="Телефон" value={form.phone} onChange={e=>setForm({...form, phone:e.target.value})}/>
                   {errors.phone && <div className="field-error">{errors.phone}</div>}
                 </div>
                 <div>
@@ -457,7 +497,7 @@ export const ContactsPage = ({ go, openBooking, showToast }) => {
               </div>
             </div>
           </div>
-          <div className="card stripe-bg" style={{minHeight:560, background:'linear-gradient(135deg, var(--teal-100), var(--teal-200))', display:'flex', flexDirection:'column', justifyContent:'flex-end', padding:0, position:'relative', overflow:'hidden'}}>
+          <div className="card stripe-bg contacts-map" style={{minHeight:560, background:'linear-gradient(135deg, var(--teal-100), var(--teal-200))', display:'flex', flexDirection:'column', justifyContent:'flex-end', padding:0, position:'relative', overflow:'hidden'}}>
             {/* Mock map */}
             <svg viewBox="0 0 600 700" style={{position:'absolute', inset:0, width:'100%', height:'100%'}}>
               <rect width="600" height="700" fill="var(--teal-50)"/>
@@ -481,10 +521,10 @@ export const ContactsPage = ({ go, openBooking, showToast }) => {
               <div style={{display:'flex', alignItems:'center', gap:12}}>
                 <div style={{width:40, height:40, borderRadius:10, background:'var(--coral-100)', color:'var(--coral-600)', display:'grid', placeItems:'center'}}><Icon name="pin" size={18}/></div>
                 <div style={{flex:1}}>
-                  <div style={{fontWeight:600}}>PetCare · вул. Личаківська 42</div>
+                  <div style={{fontWeight:600}}>UltraVet · вул. Околична, 10</div>
                   <div style={{fontSize:13, color:'var(--ink-500)'}}>3 хв пішки від зупинки</div>
                 </div>
-                <button className="btn btn-sm btn-primary">Маршрут</button>
+                <a className="btn btn-sm btn-primary" href="https://maps.google.com/?q=вул.+Околична+10,+Львів" target="_blank" rel="noopener noreferrer">Маршрут</a>
               </div>
             </div>
           </div>
@@ -498,9 +538,10 @@ export const ContactsPage = ({ go, openBooking, showToast }) => {
 // PRICES
 // =================================================================
 export const PricesPage = ({ go, openBooking }) => {
+  const { services } = useStore();
   const [search, setSearch] = uS2('');
   const [active, setActive] = uS2('all');
-  const filtered = SERVICES.filter(s => active === 'all' || s.id === active);
+  const filtered = services.filter(s => active === 'all' || s.id === active);
 
   return (
     <div data-screen-label="Prices">
@@ -520,9 +561,9 @@ export const PricesPage = ({ go, openBooking }) => {
               <input className="input" style={{paddingLeft:34, fontSize:13}} placeholder="Пошук" value={search} onChange={e=>setSearch(e.target.value)}/>
             </div>
             <button onClick={()=>setActive('all')} style={{display:'flex', justifyContent:'space-between', width:'100%', padding:'10px 12px', borderRadius:10, border:0, background: active==='all'?'var(--teal-50)':'transparent', color: active==='all'?'var(--teal-700)':'var(--ink-700)', fontWeight:600, cursor:'pointer', fontSize:14}}>
-              Усі категорії <span style={{fontSize:12, color:'var(--ink-500)'}}>{SERVICES.reduce((a,s)=>a+s.items.length,0)}</span>
+              Усі категорії <span style={{fontSize:12, color:'var(--ink-500)'}}>{services.reduce((a,s)=>a+s.items.length,0)}</span>
             </button>
-            {SERVICES.map(s => (
+            {services.map(s => (
               <button key={s.id} onClick={()=>setActive(s.id)} style={{display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%', padding:'10px 12px', borderRadius:10, border:0, background: active===s.id?'var(--teal-50)':'transparent', color: active===s.id?'var(--teal-700)':'var(--ink-700)', fontWeight: active===s.id?600:500, cursor:'pointer', fontSize:14, textAlign:'left'}}>
                 <span>{s.name}</span><span style={{fontSize:12, color:'var(--ink-500)'}}>{s.items.length}</span>
               </button>
@@ -563,9 +604,10 @@ export const PricesPage = ({ go, openBooking }) => {
 // ARTICLES + ARTICLE
 // =================================================================
 export const ArticlesPage = ({ go }) => {
+  const { articles } = useStore();
   const [tag, setTag] = uS2('Усі');
-  const tags = ['Усі', ...new Set(ARTICLES.map(a=>a.tag))];
-  const filtered = tag === 'Усі' ? ARTICLES : ARTICLES.filter(a => a.tag === tag);
+  const tags = ['Усі', ...new Set(articles.map(a=>a.tag))];
+  const filtered = tag === 'Усі' ? articles : articles.filter(a => a.tag === tag);
   const colors = ['var(--teal-100)','var(--coral-100)','var(--violet-100)','var(--amber-100)','var(--green-100)','var(--rose-100)'];
   return (
     <div data-screen-label="Articles">
@@ -576,7 +618,7 @@ export const ArticlesPage = ({ go }) => {
           <p style={{fontSize:17, color:'var(--ink-600)', maxWidth:560}}>Поради, відповіді на типові питання, інструкції від нашої команди.</p>
         </div>
       </section>
-      <section style={{padding:'24px 0', borderBottom:'1px solid var(--ink-100)', position:'sticky', top:72, background:'var(--bg)', zIndex:10}}>
+      <section style={{padding:'24px 0', borderBottom:'1px solid var(--ink-100)', position:'sticky', top:'var(--header-h)', background:'var(--bg)', zIndex:10}}>
         <div className="container" style={{display:'flex', gap:8, overflowX:'auto'}}>
           {tags.map(t => (
             <button key={t} onClick={()=>setTag(t)} style={{padding:'8px 16px', borderRadius:999, border:0, background: tag===t?'var(--ink-900)':'var(--ink-100)', color: tag===t?'#fff':'var(--ink-700)', fontSize:13, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap'}}>{t}</button>
@@ -588,7 +630,9 @@ export const ArticlesPage = ({ go }) => {
           <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:18}}>
             {filtered.map((a,i)=>(
               <button key={a.id} onClick={()=>go('article',{id:a.id})} className="card" style={{textAlign:'left', border:0, cursor:'pointer', overflow:'hidden', padding:0}}>
-                <div className="stripe-bg" style={{height:180, background:colors[i%colors.length]}}></div>
+                <div style={{height:180, background:colors[i%colors.length], overflow:'hidden'}}>
+                  {a.cover && <img src={a.cover} alt={a.title} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>}
+                </div>
                 <div style={{padding:22}}>
                   <div style={{display:'flex', gap:10, fontSize:12, color:'var(--ink-500)', marginBottom:10}}>
                     <span style={{fontWeight:600, color:'var(--teal-700)'}}>{a.tag}</span><span>·</span><span>{a.read} хв</span><span>·</span><span>{a.date}</span>
@@ -606,7 +650,8 @@ export const ArticlesPage = ({ go }) => {
 };
 
 export const ArticlePage = ({ go, params }) => {
-  const a = ARTICLES.find(x => x.id === params.id) || ARTICLES[0];
+  const { articles } = useStore();
+  const a = articles.find(x => x.id === params.id) || articles[0];
   return (
     <div data-screen-label="Article" style={{paddingBottom:96}}>
       <div className="container" style={{padding:'24px 24px 0', maxWidth:760}}>
@@ -620,7 +665,13 @@ export const ArticlePage = ({ go, params }) => {
           <div>Марта Коваль · {a.date}</div>
           <span>·</span><span>{a.read} хв читати</span>
         </div>
-        <div className="stripe-bg" style={{height:320, background:'var(--teal-100)', borderRadius:20, marginBottom:32, display:'grid', placeItems:'center', color:'var(--teal-700)', fontFamily:'var(--font-mono)', fontSize:13}}>обкладинка статті</div>
+        <div style={{height:320, background:'var(--teal-100)', borderRadius:20, marginBottom:32, overflow:'hidden'}}>
+          {a.cover ? (
+            <img src={a.cover} alt={a.title} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+          ) : (
+            <div className="stripe-bg" style={{height:'100%', display:'grid', placeItems:'center', color:'var(--teal-700)', fontFamily:'var(--font-mono)', fontSize:13}}>обкладинка статті</div>
+          )}
+        </div>
         <p style={{fontSize:18, color:'var(--ink-700)', marginBottom:18, lineHeight:1.65}}>{a.excerpt} У цій короткій статті ми розглядаємо підхід, який працює для 80% власників.</p>
         <h2 style={{fontSize:28, margin:'28px 0 14px'}}>Що варто знати</h2>
         <p style={{fontSize:17, color:'var(--ink-700)', marginBottom:14, lineHeight:1.65}}>Перед візитом до ветеринара важливо звернути увагу на поведінку тварини за останні 1–2 тижні. Запишіть зміни апетиту, активності та сну — це допоможе лікарю швидше зорієнтуватися.</p>
@@ -644,18 +695,65 @@ export const ArticlePage = ({ go, params }) => {
 // =================================================================
 // PROFILE
 // =================================================================
-export const ProfilePage = ({ go, openBooking }) => {
+export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
+  const { currentUser, pets, appointments, messages, cancelAppointment, savePet, saveClient } = useStore();
   const [tab, setTab] = uS2('upcoming');
-  const myPets = PETS.slice(0, 2);
-  const myAppts = APPOINTMENTS.slice(0, 5);
+  const [petForm, setPetForm] = uS2(null);
+  const [profileForm, setProfileForm] = uS2(null);
+  const user = currentUser;
+
+  uE2(() => {
+    if (!user) openLogin?.();
+  }, [user, openLogin]);
+
+  if (!user) {
+    return (
+      <div data-screen-label="Profile">
+        <section style={{padding:'72px 0 96px', background:'var(--teal-50)'}}>
+          <div className="container" style={{maxWidth:620}}>
+            <div className="card" style={{padding:32, textAlign:'center'}}>
+              <div style={{width:56, height:56, borderRadius:16, background:'var(--teal-100)', color:'var(--teal-700)', display:'grid', placeItems:'center', margin:'0 auto 16px'}}>
+                <Icon name="user" size={24}/>
+              </div>
+              <h1 style={{fontSize:30, marginBottom:10}}>Увійдіть, щоб переглянути кабінет</h1>
+              <p style={{color:'var(--ink-600)', marginBottom:20}}>Ваші записи, тварини та документи доступні після входу.</p>
+              <button className="btn btn-primary" onClick={() => openLogin?.()}>Увійти</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  const myPets = pets.filter(p => p.owner === user?.name);
+  const myAppts = appointments.filter(a => a.client === user?.name);
+  const myMessages = messages.filter(m => !m.phone || m.phone === user?.phone);
+  const saveProfile = () => {
+    const result = saveClient(profileForm);
+    if (!result.ok) {
+      showToast?.(result.error);
+      return;
+    }
+    setProfileForm(null);
+    showToast?.('Профіль оновлено.');
+  };
+  const savePetForm = () => {
+    const result = savePet({ ...petForm, owner:user?.name || '', age:Number(petForm.age || 0), weight:Number(petForm.weight || 0), alerts: String(petForm.alertsText || '').split(',').map(x=>x.trim()).filter(Boolean) });
+    if (!result.ok) {
+      showToast?.(result.error);
+      return;
+    }
+    setPetForm(null);
+    showToast?.('Картку тварини збережено.');
+  };
   return (
     <div data-screen-label="Profile">
       <section style={{padding:'40px 0 24px', background:'var(--teal-50)'}}>
         <div className="container" style={{display:'flex', alignItems:'center', gap:18}}>
-          <Avatar name="Ірина Ковальчук" size={64}/>
+          <Avatar name={user?.name || 'Клієнт'} size={64}/>
           <div style={{flex:1}}>
             <div className="chip chip-teal" style={{marginBottom:6}}>Кабінет клієнта</div>
-            <h1 style={{fontSize:36, letterSpacing:'-0.03em'}}>Вітаємо, Ірино!</h1>
+            <h1 style={{fontSize:36, letterSpacing:'-0.03em'}}>Вітаємо, {user?.name?.split(' ')[0] || 'клієнте'}!</h1>
           </div>
           <button className="btn btn-primary" onClick={()=>go('booking')}><Icon name="plus" size={14} color="#fff"/> Новий запис</button>
         </div>
@@ -687,7 +785,7 @@ export const ProfilePage = ({ go, openBooking }) => {
                       <div style={{width:56, height:56, borderRadius:14, background:'var(--teal-100)', color:'var(--teal-700)', display:'grid', placeItems:'center', textAlign:'center', fontFamily:'var(--font-display)'}}>
                         <div>
                           <div style={{fontSize:20, fontWeight:700, lineHeight:1}}>{ap.date.slice(8,10)}</div>
-                          <div style={{fontSize:10, fontWeight:600}}>КВІТ</div>
+                          <div style={{fontSize:10, fontWeight:600}}>{['СІЧ','ЛЮТ','БЕР','КВІТ','ТРАВ','ЧЕР','ЛИП','СЕР','ВЕР','ЖОВ','ЛИС','ГРУ'][parseInt(ap.date.slice(5,7),10)-1] || ''}</div>
                         </div>
                       </div>
                       <div>
@@ -695,7 +793,7 @@ export const ProfilePage = ({ go, openBooking }) => {
                         <div style={{fontSize:13, color:'var(--ink-500)', marginTop:2}}>{ap.pet} · {ap.doctor} · {ap.time}</div>
                       </div>
                       <StatusPill status={ap.status}/>
-                      <button className="btn btn-sm btn-outline">Деталі</button>
+                      <button className="btn btn-sm btn-outline" onClick={()=>cancelAppointment(ap.id)}>Скасувати</button>
                     </div>
                   ))}
                 </div>
@@ -721,7 +819,7 @@ export const ProfilePage = ({ go, openBooking }) => {
               <div>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18}}>
                   <h2 style={{fontSize:24}}>Мої тварини</h2>
-                  <button className="btn btn-sm btn-outline"><Icon name="plus" size={14}/> Додати</button>
+                  <button className="btn btn-sm btn-outline" onClick={()=>setPetForm({ name:'', species:'Кіт', breed:'', age:1, weight:0, alertsText:'' })}><Icon name="plus" size={14}/> Додати</button>
                 </div>
                 <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14}}>
                   {myPets.map((p, i) => (
@@ -735,6 +833,7 @@ export const ProfilePage = ({ go, openBooking }) => {
                           <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'var(--ink-500)'}}>Останній візит</span><span style={{fontWeight:600}}>{p.lastVisit}</span></div>
                         </div>
                         {p.alerts.length>0 && <div className="chip chip-amber" style={{marginTop:10, fontSize:11}}>{p.alerts[0]}</div>}
+                        <button className="btn btn-sm btn-outline" onClick={()=>setPetForm({ ...p, alertsText:p.alerts?.join(', ') || '' })} style={{marginTop:10}}>Редагувати</button>
                       </div>
                     </div>
                   ))}
@@ -759,17 +858,65 @@ export const ProfilePage = ({ go, openBooking }) => {
               </div>
             )}
 
-            {(tab === 'docs' || tab === 'settings') && (
-              <div className="card" style={{padding:48, textAlign:'center'}}>
-                <Icon name={tab==='docs'?'book':'settings'} size={48} color="var(--ink-300)"/>
-                <h3 style={{fontSize:22, marginTop:14}}>{tab==='docs'?'Документи':'Налаштування'}</h3>
-                <p style={{color:'var(--ink-500)', marginTop:8}}>Розділ у розробці.</p>
+            {tab === 'docs' && (
+              <div>
+                <h2 style={{fontSize:24, marginBottom:18}}>Документи</h2>
+                <div className="card" style={{padding:0}}>
+                  {[...myAppts.slice(0,4).map(ap => ({id:`ap-${ap.id}`, title:`Виписка: ${ap.service}`, meta:`${ap.pet} · ${ap.date}`, icon:'file'})), ...myMessages.slice(0,3).map(m => ({id:`m-${m.id}`, title:'Звернення до клініки', meta:m.createdAt?.slice(0,10) || 'сьогодні', icon:'mail'}))].map((doc,i)=>(
+                    <div key={doc.id} style={{display:'grid', gridTemplateColumns:'auto 1fr auto', gap:14, padding:'16px 22px', alignItems:'center', borderTop:i?'1px solid var(--ink-100)':0}}>
+                      <div style={{width:38, height:38, borderRadius:10, background:'var(--teal-50)', color:'var(--teal-700)', display:'grid', placeItems:'center'}}><Icon name={doc.icon} size={16}/></div>
+                      <div><div style={{fontWeight:600, fontSize:14}}>{doc.title}</div><div style={{fontSize:12, color:'var(--ink-500)'}}>{doc.meta}</div></div>
+                      <button className="btn btn-sm btn-outline">Переглянути</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {tab === 'settings' && (
+              <div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18}}>
+                  <h2 style={{fontSize:24}}>Налаштування</h2>
+                  <button className="btn btn-sm btn-outline" onClick={()=>setProfileForm(user)}>Редагувати профіль</button>
+                </div>
+                <div className="card" style={{padding:24, display:'grid', gap:12, maxWidth:560}}>
+                  {[['Імʼя', user?.name], ['Телефон', user?.phone], ['Email', user?.email], ['Статус', user?.status]].map(([label, value])=>(
+                    <div key={label} style={{display:'flex', justifyContent:'space-between', fontSize:14, borderBottom:'1px solid var(--ink-100)', paddingBottom:10}}>
+                      <span style={{color:'var(--ink-500)'}}>{label}</span><span style={{fontWeight:600}}>{value || '—'}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
       </section>
+      {petForm && (
+        <div className="backdrop" onClick={()=>setPetForm(null)}>
+          <div className="card" onClick={e=>e.stopPropagation()} style={{padding:24, maxWidth:480, width:'100%'}}>
+            <h2 style={{fontSize:22, marginBottom:16}}>{petForm.id ? 'Редагувати тварину' : 'Додати тварину'}</h2>
+            <div style={{display:'grid', gap:12}}>
+              {[
+                ['name','Кличка'], ['species','Вид'], ['breed','Порода'], ['age','Вік'], ['weight','Вага'], ['alertsText','Попередження через кому']
+              ].map(([k,l])=><input key={k} className="input" placeholder={l} value={petForm[k] || ''} onChange={e=>setPetForm(f=>({...f,[k]:e.target.value}))}/>)}
+            </div>
+            <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:18}}><button className="btn btn-ghost btn-sm" onClick={()=>setPetForm(null)}>Скасувати</button><button className="btn btn-primary btn-sm" onClick={savePetForm}>Зберегти</button></div>
+          </div>
+        </div>
+      )}
+      {profileForm && (
+        <div className="backdrop" onClick={()=>setProfileForm(null)}>
+          <div className="card" onClick={e=>e.stopPropagation()} style={{padding:24, maxWidth:460, width:'100%'}}>
+            <h2 style={{fontSize:22, marginBottom:16}}>Профіль</h2>
+            <div style={{display:'grid', gap:12}}>
+              {[
+                ['name','Імʼя'], ['phone','Телефон'], ['email','Email']
+              ].map(([k,l])=><input key={k} className="input" placeholder={l} value={profileForm[k] || ''} onChange={e=>setProfileForm(f=>({...f,[k]:e.target.value}))}/>)}
+            </div>
+            <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:18}}><button className="btn btn-ghost btn-sm" onClick={()=>setProfileForm(null)}>Скасувати</button><button className="btn btn-primary btn-sm" onClick={saveProfile}>Зберегти</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-

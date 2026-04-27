@@ -1,4 +1,4 @@
-// PetCare mock data
+// UltraVet mock data
 export const SERVICES = [
   { id: 'therapy', name: 'Терапія', icon: 'heart', color: 'teal',
     short: 'Первинний огляд та контроль стану',
@@ -73,42 +73,54 @@ export const SERVICES = [
 export const DOCTORS = [
   { id: 'd1', name: 'Марта Коваль', role: 'Терапевт, УЗД-діагност', exp: 12, services: ['therapy','imaging'],
     bio: 'Спеціалізується на діагностиці хронічних станів, веденні літніх тварин та УЗД.',
+    photo: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&q=80&auto=format&fit=crop',
     schedule: ['Пн 10:00–18:00', 'Ср 10:00–18:00', 'Пт 10:00–18:00'] },
   { id: 'd2', name: 'Іван Рудницький', role: 'Хірург', exp: 15, services: ['surgery','oncology'],
     bio: 'Планові та ургентні операції, м\'якотканинна хірургія, ортопедія.',
+    photo: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=600&q=80&auto=format&fit=crop',
     schedule: ['Вт 09:00–17:00', 'Чт 09:00–17:00', 'Сб 10:00–14:00'] },
   { id: 'd3', name: 'Ольга Середа', role: 'Стоматолог', exp: 8, services: ['dentistry'],
     bio: 'Лікування пародонтиту, ультразвукова чистка, видалення зубів під седацією.',
+    photo: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=600&q=80&auto=format&fit=crop',
     schedule: ['Пн 12:00–18:00', 'Ср 12:00–18:00'] },
   { id: 'd4', name: 'Дмитро Кравець', role: 'Офтальмолог', exp: 9, services: ['ophthalmology'],
     bio: 'Захворювання очей, травми, кератит, корекція повік.',
+    photo: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=600&q=80&auto=format&fit=crop',
     schedule: ['Вт 10:00–16:00', 'Пт 10:00–16:00'] },
   { id: 'd5', name: 'Анна Гарасим', role: 'Дерматолог-алерголог', exp: 7, services: ['therapy','hygiene'],
     bio: 'Алергії, шкірні захворювання, дерматити.',
+    photo: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=600&q=80&auto=format&fit=crop',
     schedule: ['Чт 11:00–17:00', 'Сб 10:00–14:00'] },
   { id: 'd6', name: 'Тарас Левчук', role: 'Анестезіолог', exp: 10, services: ['surgery','dentistry'],
     bio: 'Безпечна анестезія, моніторинг під час операцій.',
+    photo: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=600&q=80&auto=format&fit=crop',
     schedule: ['За викликом'] },
 ];
 
 export const ARTICLES = [
   { id: 'a1', title: 'Як підготувати тварину до першого візиту', tag: 'Поради', read: 4,
     excerpt: 'Прості кроки, щоб зробити прийом спокійним для вас і вашого улюбленця.',
+    cover: 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=900&q=80&auto=format&fit=crop',
     date: '12 квітня 2026' },
   { id: 'a2', title: 'Календар вакцинації котів і собак', tag: 'Вакцинація', read: 6,
     excerpt: 'Коли ставити щеплення, чим відрізняються комплексні препарати.',
+    cover: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?w=900&q=80&auto=format&fit=crop',
     date: '03 квітня 2026' },
   { id: 'a3', title: 'Ознаки болю у тварин, які власники часто пропускають', tag: 'Здоров\'я', read: 5,
     excerpt: 'Зміна поведінки, апетиту, постави — на що звертати увагу.',
+    cover: 'https://images.unsplash.com/photo-1444212477490-ca407925329e?w=900&q=80&auto=format&fit=crop',
     date: '28 березня 2026' },
   { id: 'a4', title: 'Харчування літніх собак: що змінити після 7 років', tag: 'Харчування', read: 7,
     excerpt: 'Калорійність, білок, добавки для суглобів — короткий гід.',
+    cover: 'https://images.unsplash.com/photo-1583511655802-41096612a6cb?w=900&q=80&auto=format&fit=crop',
     date: '20 березня 2026' },
   { id: 'a5', title: 'Чищення зубів вдома: як привчити кота', tag: 'Догляд', read: 4,
     excerpt: 'Поетапний план, без стресу і боротьби.',
+    cover: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=900&q=80&auto=format&fit=crop',
     date: '15 березня 2026' },
   { id: 'a6', title: 'Що робити при отруєнні тварини: перші 30 хвилин', tag: 'Невідкладна допомога', read: 5,
     excerpt: 'Чек-лист дій до приходу до клініки.',
+    cover: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=900&q=80&auto=format&fit=crop',
     date: '08 березня 2026' },
 ];
 
@@ -134,7 +146,7 @@ export const APPOINTMENTS = [
 ];
 
 export const CLIENTS = [
-  { id: 'c1', name: 'Ірина Ковальчук', phone: '+380 67 123 45 67', email: 'irina.k@example.com', pets: 1, visits: 12, since: '2023', status: 'active' },
+  { id: 'c1', name: 'Ірина Ковальчук', phone: '+380 67 555 12 34', email: 'irina.k@example.com', pets: 1, visits: 12, since: '2023', status: 'active' },
   { id: 'c2', name: 'Олег Вознюк', phone: '+380 50 234 56 78', email: 'oleg.v@example.com', pets: 2, visits: 8, since: '2024', status: 'active' },
   { id: 'c3', name: 'Наталя Мельник', phone: '+380 63 345 67 89', email: 'natalya.m@example.com', pets: 1, visits: 15, since: '2022', status: 'active' },
   { id: 'c4', name: 'Андрій Петренко', phone: '+380 67 456 78 90', email: 'andriy.p@example.com', pets: 1, visits: 4, since: '2025', status: 'active' },

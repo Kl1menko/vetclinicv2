@@ -1,27 +1,24 @@
 // Public pages — part 1: Home, Services, Service Detail
 import React, { useState as useS, useMemo as useM, useEffect as useEf } from 'react';
 import { Icon, PetIllustration, Avatar, Stars } from './components.jsx';
-import { SERVICES, DOCTORS, REVIEWS, ARTICLES } from './data.js';
+import { useStore } from './store.jsx';
 
 // =================================================================
 // HOME PAGE
 // =================================================================
 export const HomePage = ({ go, openBooking }) => {
+  const { services, doctors, articles, reviews } = useStore();
   return (
     <div data-screen-label="Home">
       {/* HERO */}
-      <section style={{position:'relative', overflow:'hidden', background:'linear-gradient(180deg, var(--teal-50), transparent 80%)'}}>
-        <div className="container" style={{padding:'72px 24px 96px', display:'grid', gridTemplateColumns:'1.15fr 1fr', gap:48, alignItems:'center'}}>
+      <section className="home-hero" style={{position:'relative', overflow:'hidden', background:'linear-gradient(180deg, var(--teal-50), transparent 80%)'}}>
+        <div className="container home-hero-grid" style={{padding:'72px 24px 96px', display:'grid', gridTemplateColumns:'1.15fr 1fr', gap:48, alignItems:'center'}}>
           <div className="fade-up">
-            <div className="chip chip-teal" style={{marginBottom:18}}>
-              <span style={{width:6, height:6, borderRadius:'50%', background:'var(--teal-500)'}}></span>
-              Працюємо сьогодні · Запис на 14:30 ще вільний
-            </div>
-            <h1 style={{fontSize:64, lineHeight:1.02, letterSpacing:'-0.035em', marginBottom:20}}>
+            <h1 className="home-hero-title" style={{fontSize:64, lineHeight:1.02, letterSpacing:'-0.035em', marginBottom:20}}>
               Уважна ветеринарія<br/>
               <span style={{color:'var(--teal-600)'}}>для тих, кого ви любите.</span>
             </h1>
-            <p style={{fontSize:18, color:'var(--ink-600)', maxWidth:520, marginBottom:32}}>
+            <p className="home-hero-lead" style={{fontSize:18, color:'var(--ink-600)', maxWidth:520, marginBottom:32}}>
               Сучасна клініка у Львові з онлайн-записом, прозорими цінами та власним кабінетом, де зберігається вся медична історія вашого улюбленця.
             </p>
             <div style={{display:'flex', gap:12, alignItems:'center'}}>
@@ -32,7 +29,7 @@ export const HomePage = ({ go, openBooking }) => {
                 Дивитись послуги <Icon name="arrowRight" size={16}/>
               </button>
             </div>
-            <div style={{display:'flex', gap:32, marginTop:40, flexWrap:'wrap'}}>
+            <div className="hero-stats" style={{display:'flex', gap:32, marginTop:40, flexWrap:'wrap'}}>
               {[
                 { v:'12 років', l:'на ринку' },
                 { v:'24/7', l:'ургентна допомога' },
@@ -47,7 +44,7 @@ export const HomePage = ({ go, openBooking }) => {
             </div>
           </div>
           {/* Visual cluster */}
-          <div style={{position:'relative', height:520}}>
+          <div className="home-hero-cluster" style={{position:'relative', height:520}}>
             <div className="card" style={{position:'absolute', top:0, right:0, width:340, padding:24, transform:'rotate(2deg)', boxShadow:'var(--shadow-lg)'}}>
               <div style={{display:'flex', alignItems:'center', gap:14, marginBottom:14}}>
                 <PetIllustration kind="dog" color="coral" size={64}/>
@@ -69,7 +66,7 @@ export const HomePage = ({ go, openBooking }) => {
 
             <div className="card" style={{position:'absolute', top:170, left:0, width:300, padding:20, transform:'rotate(-3deg)', boxShadow:'var(--shadow-lg)'}}>
               <div style={{fontSize:12, color:'var(--ink-500)', fontWeight:600, marginBottom:10}}>СЬОГОДНІ В РОБОТІ</div>
-              {DOCTORS.slice(0,3).map((d,i)=>(
+              {doctors.slice(0,3).map((d,i)=>(
                 <div key={d.id} style={{display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderTop: i?'1px solid var(--ink-100)':0}}>
                   <Avatar name={d.name} size={36}/>
                   <div style={{flex:1}}>
@@ -86,8 +83,8 @@ export const HomePage = ({ go, openBooking }) => {
                 <Icon name="phone" size={14} color="var(--coral-500)"/>
                 <div style={{fontSize:11, color:'var(--coral-300)', fontWeight:600, letterSpacing:'0.04em'}}>УРГЕНТНА ЛІНІЯ</div>
               </div>
-              <div style={{fontFamily:'var(--font-display)', fontSize:22, fontWeight:700}}>+380 67 123 45 67</div>
-              <div style={{fontSize:12, opacity:.6, marginTop:4}}>Цілодобово, без вихідних</div>
+              <a href="tel:+380636798977" style={{fontFamily:'var(--font-display)', fontSize:22, fontWeight:700, color:'#fff'}}>+380 63 679 89 77</a>
+              <div style={{fontSize:12, opacity:.6, marginTop:4}}>Пн–Пт 09:00–18:00 · Сб–Нд за записом</div>
             </div>
           </div>
         </div>
@@ -95,7 +92,7 @@ export const HomePage = ({ go, openBooking }) => {
 
       {/* TRUST BAR */}
       <section style={{borderTop:'1px solid var(--ink-100)', borderBottom:'1px solid var(--ink-100)', background:'var(--paper)'}}>
-        <div className="container" style={{padding:'20px 24px', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:14}}>
+        <div className="container trust-bar" style={{padding:'20px 24px', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:14}}>
           {['Сертифікація MSD','IDEXX лабораторія','Партнер Royal Canin','VCA Member','Цифрова рентгенографія'].map((b,i)=>(
             <div key={i} style={{fontSize:13, fontWeight:600, color:'var(--ink-500)', letterSpacing:'0.02em', textTransform:'uppercase'}}>{b}</div>
           ))}
@@ -113,7 +110,7 @@ export const HomePage = ({ go, openBooking }) => {
             <button className="btn btn-outline" onClick={()=>go('services')}>Усі послуги <Icon name="arrowRight" size={14}/></button>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16}}>
-            {SERVICES.slice(0,6).map((s,i)=>(
+            {services.slice(0,6).map((s,i)=>(
               <button key={s.id} onClick={()=>go('service',{id:s.id})}
                 className="card" style={{padding:24, textAlign:'left', border:0, cursor:'pointer', transition:'transform .15s ease, box-shadow .15s ease'}}
                 onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='var(--shadow)';}}
@@ -136,7 +133,7 @@ export const HomePage = ({ go, openBooking }) => {
       {/* WHY US */}
       <section style={{padding:'80px 0', background:'var(--ink-950)', color:'#fff'}}>
         <div className="container">
-          <div className="chip chip-teal" style={{marginBottom:14}}>Чому PetCare</div>
+          <div className="chip chip-teal" style={{marginBottom:14}}>Чому UltraVet</div>
           <h2 style={{fontSize:42, color:'#fff', maxWidth:680, marginBottom:48}}>Не лікарня, а простір довіри між власником, лікарем і твариною</h2>
           <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16}}>
             {[
@@ -168,10 +165,14 @@ export const HomePage = ({ go, openBooking }) => {
             <button className="btn btn-outline" onClick={()=>go('about')}>Уся команда <Icon name="arrowRight" size={14}/></button>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:16}}>
-            {DOCTORS.slice(0,4).map(d=>(
+            {doctors.slice(0,4).map(d=>(
               <div key={d.id} className="card" style={{padding:0, overflow:'hidden'}}>
-                <div className="stripe-bg" style={{height:180, background:'var(--teal-100)', display:'grid', placeItems:'center'}}>
-                  <Avatar name={d.name} size={84}/>
+                <div style={{height:180, background:'var(--teal-100)', overflow:'hidden'}}>
+                  {d.photo ? (
+                    <img src={d.photo} alt={d.name} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
+                  ) : (
+                    <div className="stripe-bg" style={{height:'100%', display:'grid', placeItems:'center'}}><Avatar name={d.name} size={84}/></div>
+                  )}
                 </div>
                 <div style={{padding:18}}>
                   <div style={{fontFamily:'var(--font-display)', fontWeight:600, fontSize:18}}>{d.name}</div>
@@ -192,7 +193,7 @@ export const HomePage = ({ go, openBooking }) => {
           <div className="chip chip-amber" style={{marginBottom:14}}>Відгуки</div>
           <h2 style={{fontSize:42, marginBottom:36}}>Що кажуть власники</h2>
           <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16}}>
-            {REVIEWS.slice(0,4).map((r,i)=>(
+            {reviews.slice(0,4).map((r,i)=>(
               <div key={i} className="card" style={{padding:28, border:'1px solid var(--ink-100)', boxShadow:'none'}}>
                 <Stars rating={r.rating}/>
                 <p style={{fontSize:17, lineHeight:1.5, margin:'14px 0 18px', color:'var(--ink-800)'}}>«{r.text}»</p>
@@ -220,9 +221,11 @@ export const HomePage = ({ go, openBooking }) => {
             <button className="btn btn-outline" onClick={()=>go('articles')}>Усі статті <Icon name="arrowRight" size={14}/></button>
           </div>
           <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16}}>
-            {ARTICLES.slice(0,3).map((a,i)=>(
+            {articles.slice(0,3).map((a,i)=>(
               <button key={a.id} onClick={()=>go('article', {id:a.id})} className="card" style={{textAlign:'left', border:0, cursor:'pointer', overflow:'hidden', padding:0}}>
-                <div className="stripe-bg" style={{height:160, background: ['var(--teal-100)','var(--coral-100)','var(--violet-100)'][i%3]}}></div>
+                <div style={{height:160, background: ['var(--teal-100)','var(--coral-100)','var(--violet-100)'][i%3], overflow:'hidden'}}>
+                  {a.cover && <img src={a.cover} alt={a.title} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>}
+                </div>
                 <div style={{padding:22}}>
                   <div style={{display:'flex', gap:10, fontSize:12, color:'var(--ink-500)', marginBottom:10}}>
                     <span style={{fontWeight:600, color:'var(--teal-700)'}}>{a.tag}</span>
@@ -241,7 +244,7 @@ export const HomePage = ({ go, openBooking }) => {
       {/* CTA */}
       <section style={{padding:'48px 0 96px'}}>
         <div className="container">
-          <div style={{padding:'56px 56px', borderRadius:28, background:'linear-gradient(135deg, var(--teal-600), var(--teal-800))', color:'#fff', display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:32, alignItems:'center', position:'relative', overflow:'hidden'}}>
+          <div className="home-cta" style={{padding:'56px 56px', borderRadius:28, background:'linear-gradient(135deg, var(--teal-600), var(--teal-800))', color:'#fff', display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:32, alignItems:'center', position:'relative', overflow:'hidden'}}>
             <div style={{position:'absolute', top:-60, right:-60, width:300, height:300, borderRadius:'50%', background:'var(--coral-500)', opacity:.15}}/>
             <div>
               <h2 style={{fontSize:38, color:'#fff', marginBottom:14}}>Готові записатися?</h2>
@@ -249,7 +252,7 @@ export const HomePage = ({ go, openBooking }) => {
             </div>
             <div style={{display:'flex', gap:12, justifySelf:'end'}}>
               <button className="btn btn-coral btn-lg" onClick={openBooking}>Записатись онлайн</button>
-              <button className="btn btn-lg" style={{background:'rgba(255,255,255,0.12)', color:'#fff'}}><Icon name="phone" size={16}/> Подзвонити</button>
+              <a href="tel:+380636798977" className="btn btn-lg" style={{background:'rgba(255,255,255,0.12)', color:'#fff'}}><Icon name="phone" size={16}/> Подзвонити</a>
             </div>
           </div>
         </div>
@@ -262,9 +265,10 @@ export const HomePage = ({ go, openBooking }) => {
 // SERVICES PAGE
 // =================================================================
 export const ServicesPage = ({ go, openBooking }) => {
+  const { services } = useStore();
   const [search, setSearch] = useS('');
   const [view, setView] = useS('grid');
-  const filtered = SERVICES.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.short.toLowerCase().includes(search.toLowerCase()));
+  const filtered = services.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.short.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div data-screen-label="Services">
@@ -276,7 +280,7 @@ export const ServicesPage = ({ go, openBooking }) => {
         </div>
       </section>
 
-      <section style={{padding:'32px 0 16px', position:'sticky', top:72, background:'var(--bg)', zIndex:10, borderBottom:'1px solid var(--ink-100)'}}>
+      <section style={{padding:'32px 0 16px', position:'sticky', top:'var(--header-h)', background:'var(--bg)', zIndex:10, borderBottom:'1px solid var(--ink-100)'}}>
         <div className="container" style={{display:'flex', gap:14, alignItems:'center'}}>
           <div style={{position:'relative', flex:1, maxWidth:480}}>
             <div style={{position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', color:'var(--ink-400)'}}><Icon name="search" size={16}/></div>
@@ -292,7 +296,12 @@ export const ServicesPage = ({ go, openBooking }) => {
 
       <section style={{padding:'40px 0 96px'}}>
         <div className="container">
-          {view === 'grid' ? (
+          {filtered.length === 0 ? (
+            <div className="card" style={{padding:48, textAlign:'center', color:'var(--ink-500)'}}>
+              <div style={{fontSize:16, fontWeight:600, color:'var(--ink-700)', marginBottom:6}}>Нічого не знайдено</div>
+              <div style={{fontSize:14}}>Спробуйте інший запит або перегляньте всі послуги.</div>
+            </div>
+          ) : view === 'grid' ? (
             <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16}}>
               {filtered.map(s => (
                 <div key={s.id} className="card" style={{padding:26, display:'flex', flexDirection:'column'}}>
@@ -338,8 +347,9 @@ export const ServicesPage = ({ go, openBooking }) => {
 // SERVICE DETAIL
 // =================================================================
 export const ServiceDetailPage = ({ go, openBooking, params }) => {
-  const s = SERVICES.find(x => x.id === params.id) || SERVICES[0];
-  const drs = DOCTORS.filter(d => d.services.includes(s.id));
+  const { services, doctors } = useStore();
+  const s = services.find(x => x.id === params.id) || services[0];
+  const drs = doctors.filter(d => d.services.includes(s.id));
 
   return (
     <div data-screen-label={`Service · ${s.name}`}>
@@ -349,7 +359,7 @@ export const ServiceDetailPage = ({ go, openBooking, params }) => {
         </button>
       </div>
       <section style={{padding:'24px 0 56px'}}>
-        <div className="container" style={{display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:48, alignItems:'flex-start'}}>
+        <div className="container service-detail-grid" style={{display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:48, alignItems:'flex-start'}}>
           <div>
             <div style={{display:'flex', gap:14, alignItems:'center', marginBottom:24}}>
               <div style={{width:64, height:64, borderRadius:18, background:`var(--${s.color}-100)`, color:`var(--${s.color}-${s.color==='amber'||s.color==='green'?'500':'600'})`, display:'grid', placeItems:'center'}}>
@@ -408,13 +418,13 @@ export const ServiceDetailPage = ({ go, openBooking, params }) => {
               </>
             )}
           </div>
-          <div style={{position:'sticky', top:96}}>
+          <div className="service-detail-aside" style={{position:'sticky', top:96}}>
             <div className="card" style={{padding:28}}>
               <div style={{fontSize:13, color:'var(--ink-500)', marginBottom:6}}>Вартість послуги</div>
               <div style={{fontFamily:'var(--font-display)', fontSize:36, fontWeight:700, letterSpacing:'-0.03em'}}>від {s.items[0].price} ₴</div>
               <div style={{fontSize:13, color:'var(--ink-500)', marginBottom:22}}>Тривалість: ~{s.items[0].duration} хв</div>
               <button className="btn btn-primary btn-lg" style={{width:'100%'}} onClick={()=>go('booking', {service: s.id})}>Записатись</button>
-              <button className="btn btn-outline" style={{width:'100%', marginTop:10}}><Icon name="phone" size={14}/> Зателефонувати</button>
+              <a href="tel:+380636798977" className="btn btn-outline" style={{width:'100%', marginTop:10}}><Icon name="phone" size={14}/> Зателефонувати</a>
               <div style={{borderTop:'1px solid var(--ink-100)', marginTop:22, paddingTop:18, fontSize:13, color:'var(--ink-600)', lineHeight:1.6}}>
                 <div style={{display:'flex', gap:10, alignItems:'flex-start', marginBottom:10}}>
                   <Icon name="check" size={14} color="var(--green-500)"/>
@@ -436,4 +446,3 @@ export const ServiceDetailPage = ({ go, openBooking, params }) => {
     </div>
   );
 };
-
