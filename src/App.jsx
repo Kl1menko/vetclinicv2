@@ -1,5 +1,5 @@
 // Main App
-import React, { useState as uS, useEffect as uE } from "react";
+import React, { useState as uS, useEffect as uE, useMemo as uM } from "react";
 import { createPortal } from "react-dom";
 import { Icon, Logo } from "./components.jsx";
 import { useStore } from "./store.jsx";
@@ -36,6 +36,16 @@ const THEME = {
   headingFont: "Inter Tight",
   bodyFont: "Inter",
 };
+
+const slugify = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/['’"`]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}-]+/gu, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 
 const Header = ({
   go,
@@ -1030,14 +1040,101 @@ export default function App() {
   const [legalKind, setLegalKind] = uS(null);
   const [toast, setToast] = uS(null);
 
+  const serviceSlugById = uM(
+    () =>
+      Object.fromEntries(
+        (store.services || []).map((s) => [s.id, `${s.id}-${slugify(s.name)}`])
+      ),
+    [store.services]
+  );
+  const articleSlugById = uM(
+    () =>
+      Object.fromEntries(
+        (store.articles || []).map((a) => [a.id, `${a.id}-${slugify(a.title)}`])
+      ),
+    [store.articles]
+  );
+  const serviceIdBySlug = uM(
+    () =>
+      Object.fromEntries(
+        Object.entries(serviceSlugById).map(([id, slug]) => [slug, id])
+      ),
+    [serviceSlugById]
+  );
+  const articleIdBySlug = uM(
+    () =>
+      Object.fromEntries(
+        Object.entries(articleSlugById).map(([id, slug]) => [slug, id])
+      ),
+    [articleSlugById]
+  );
+
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  const go = (r, p = {}) => {
+  const getPathForRoute = (r, p = {}) => {
+    if (r === "home") return "/home";
+    if (r === "services") return "/poslugy";
+    if (r === "service") return `/poslugy/${serviceSlugById[p.id] || p.id || ""}`.replace(/\/$/, "");
+    if (r === "booking") return "/zapis";
+    if (r === "about") return "/pro-kliniku";
+    if (r === "contacts") return "/kontakty";
+    if (r === "prices") return "/ciny";
+    if (r === "articles") return "/statti";
+    if (r === "article") return `/statti/${articleSlugById[p.id] || p.id || ""}`.replace(/\/$/, "");
+    if (r === "profile") return "/kabinet";
+    return "/";
+  };
+
+  const parsePathToRoute = (pathname) => {
+    const cleaned = pathname.replace(/\/+$/, "") || "/";
+    const staticRoutes = {
+      "/home": { route: "home", params: {} },
+      "/poslugy": { route: "services", params: {} },
+      "/zapis": { route: "booking", params: {} },
+      "/pro-kliniku": { route: "about", params: {} },
+      "/kontakty": { route: "contacts", params: {} },
+      "/ciny": { route: "prices", params: {} },
+      "/statti": { route: "articles", params: {} },
+      "/kabinet": { route: "profile", params: {} },
+    };
+    if (cleaned === "/") return { route: "home", params: {}, redirectTo: "/home" };
+    if (staticRoutes[cleaned]) return staticRoutes[cleaned];
+
+    if (cleaned.startsWith("/poslugy/")) {
+      const slug = decodeURIComponent(cleaned.replace("/poslugy/", ""));
+      const directId = serviceIdBySlug[slug];
+      const prefixedId = slug.split("-")[0];
+      const id =
+        directId ||
+        (store.services || []).find((s) => s.id === prefixedId || s.id === slug)?.id;
+      return id ? { route: "service", params: { id } } : { route: "services", params: {} };
+    }
+
+    if (cleaned.startsWith("/statti/")) {
+      const slug = decodeURIComponent(cleaned.replace("/statti/", ""));
+      const directId = articleIdBySlug[slug];
+      const prefixedId = slug.split("-")[0];
+      const id =
+        directId ||
+        (store.articles || []).find((a) => a.id === prefixedId || a.id === slug)?.id;
+      return id ? { route: "article", params: { id } } : { route: "articles", params: {} };
+    }
+
+    return { route: "home", params: {} };
+  };
+
+  const go = (r, p = {}, opts = {}) => {
     setRoute(r);
     setParams(p);
+    if (!opts.silent) {
+      const nextPath = getPathForRoute(r, p);
+      if (window.location.pathname !== nextPath) {
+        window.history.pushState({ route: r, params: p }, "", nextPath);
+      }
+    }
     window.scrollTo({ top: 0, behavior: "instant" });
   };
 
@@ -1088,6 +1185,26 @@ export default function App() {
     };
     Object.entries(brand).forEach(([k, v]) => root.style.setProperty(k, v));
   }, []);
+
+  uE(() => {
+    const applyFromLocation = () => {
+      const parsed = parsePathToRoute(window.location.pathname);
+      if (parsed.redirectTo && window.location.pathname !== parsed.redirectTo) {
+        window.history.replaceState(
+          { route: parsed.route, params: parsed.params },
+          "",
+          parsed.redirectTo
+        );
+      }
+      setRoute(parsed.route);
+      setParams(parsed.params);
+    };
+
+    applyFromLocation();
+    const onPopState = () => applyFromLocation();
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [serviceIdBySlug, articleIdBySlug, store.services, store.articles]);
 
   if (admin) {
     const adminPages = {

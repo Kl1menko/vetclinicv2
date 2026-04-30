@@ -3,6 +3,28 @@ import React, { useState as uS2, useMemo as uM2, useEffect as uE2 } from 'react'
 import { Icon, PetIllustration, Avatar, StatusPill, Stars } from './components.jsx';
 import { useStore } from './store.jsx';
 
+const ArticleCoverImage = ({ src, alt, height = 180, radius = 0, className = '' }) => {
+  const [failed, setFailed] = uS2(false);
+
+  return (
+    <div className={className} style={{ height, background: 'var(--teal-100)', overflow: 'hidden', borderRadius: radius }}>
+      {!failed && src ? (
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      ) : (
+        <div className="stripe-bg" style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--teal-700)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+          обкладинка статті
+        </div>
+      )}
+    </div>
+  );
+};
+
 // =================================================================
 // BOOKING — form + calendar side-by-side
 // =================================================================
@@ -573,7 +595,7 @@ export const PricesPage = ({ go, openBooking }) => {
 
       <section style={{padding:'40px 0 96px'}}>
         <div className="container" style={{display:'grid', gridTemplateColumns:'240px 1fr', gap:24, alignItems:'flex-start'}}>
-          <div className="card" style={{padding:14, position:'sticky', top:96}}>
+          <div className="card prices-sidebar" style={{padding:14, position:'sticky', top:96}}>
             <div style={{position:'relative', marginBottom:10}}>
               <div style={{position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'var(--ink-400)'}}><Icon name="search" size={14}/></div>
               <input className="input" style={{paddingLeft:34, fontSize:13}} placeholder="Пошук" value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -626,7 +648,6 @@ export const ArticlesPage = ({ go }) => {
   const [tag, setTag] = uS2('Усі');
   const tags = ['Усі', ...new Set(articles.map(a=>a.tag))];
   const filtered = tag === 'Усі' ? articles : articles.filter(a => a.tag === tag);
-  const colors = ['var(--teal-100)','var(--coral-100)','var(--violet-100)','var(--amber-100)','var(--green-100)','var(--rose-100)'];
   return (
     <div data-screen-label="Articles">
       <section style={{padding:'56px 0 28px', background:'var(--teal-50)'}}>
@@ -648,9 +669,7 @@ export const ArticlesPage = ({ go }) => {
           <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:18}}>
             {filtered.map((a,i)=>(
               <button key={a.id} onClick={()=>go('article',{id:a.id})} className="card" style={{textAlign:'left', border:0, cursor:'pointer', overflow:'hidden', padding:0}}>
-                <div style={{height:180, background:colors[i%colors.length], overflow:'hidden'}}>
-                  {a.cover && <img src={a.cover} alt={a.title} loading="lazy" style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>}
-                </div>
+                <ArticleCoverImage className="article-cover article-cover-list" src={a.cover} alt={a.title} height={180}/>
                 <div style={{padding:22}}>
                   <div style={{display:'flex', gap:10, fontSize:12, color:'var(--ink-500)', marginBottom:10}}>
                     <span style={{fontWeight:600, color:'var(--teal-700)'}}>{a.tag}</span><span>·</span><span>{a.read} хв</span><span>·</span><span>{a.date}</span>
@@ -683,12 +702,8 @@ export const ArticlePage = ({ go, params }) => {
           <div>Марта Коваль · {a.date}</div>
           <span>·</span><span>{a.read} хв читати</span>
         </div>
-        <div style={{height:320, background:'var(--teal-100)', borderRadius:20, marginBottom:32, overflow:'hidden'}}>
-          {a.cover ? (
-            <img src={a.cover} alt={a.title} style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}/>
-          ) : (
-            <div className="stripe-bg" style={{height:'100%', display:'grid', placeItems:'center', color:'var(--teal-700)', fontFamily:'var(--font-mono)', fontSize:13}}>обкладинка статті</div>
-          )}
+        <div style={{marginBottom:32}}>
+          <ArticleCoverImage className="article-cover article-cover-detail" src={a.cover} alt={a.title} height={320} radius={20}/>
         </div>
         <p style={{fontSize:18, color:'var(--ink-700)', marginBottom:18, lineHeight:1.65}}>{a.excerpt} У цій короткій статті ми розглядаємо підхід, який працює для 80% власників.</p>
         <h2 style={{fontSize:28, margin:'28px 0 14px'}}>Що варто знати</h2>

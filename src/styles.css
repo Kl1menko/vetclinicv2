@@ -91,6 +91,8 @@ html, body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   /* `overflow-x:hidden` on html/body breaks position:sticky for descendants
      because it establishes a scroll container. Use `clip` instead — it still
      prevents horizontal overflow but does not create a scrolling box. */
@@ -389,12 +391,18 @@ img, svg, video, canvas, iframe { max-width: 100%; }
   section .container .card { width: 100%; }
 
   /* Drop sticky on phone */
-  section[style*="position:sticky"] { position: static !important; }
+  section[style*="position:sticky"],
+  section[style*="position: sticky"] { position: static !important; }
   /* Aside / summary / sidebar cards — public pages only */
   div[data-screen-label="Booking"] .card[style*="position:sticky"],
+  div[data-screen-label="Booking"] .card[style*="position: sticky"],
   div[data-screen-label="Profile"] aside[style*="position:sticky"],
+  div[data-screen-label="Profile"] aside[style*="position: sticky"],
   div[data-screen-label="Prices"] .card[style*="position:sticky"],
-  div[data-screen-label^="Service"] .service-detail-aside[style*="position:sticky"] {
+  div[data-screen-label="Prices"] .card[style*="position: sticky"],
+  div[data-screen-label^="Service"] .service-detail-aside[style*="position:sticky"],
+  div[data-screen-label^="Service"] .service-detail-aside[style*="position: sticky"],
+  .prices-sidebar {
     position: static !important;
     top: auto !important;
   }
@@ -498,6 +506,10 @@ img, svg, video, canvas, iframe { max-width: 100%; }
 
   .btn-sm { padding: 10px 14px; }
   input, select, textarea { min-height: 40px; }
+  input, select, textarea, .input {
+    font-size: 16px !important;
+    line-height: 1.35;
+  }
 
   /* Home mobile overflow safety */
   div[data-screen-label="Home"] {
@@ -726,6 +738,24 @@ img, svg, video, canvas, iframe { max-width: 100%; }
 .appointments-table-head,
 .appointments-table-row {
   min-width: 1240px;
+}
+
+/* Articles: keep cover image sizes consistent across cards */
+.article-cover {
+  width: 100%;
+  flex-shrink: 0;
+}
+.article-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.article-cover-list {
+  height: 180px !important;
+}
+.article-cover-detail {
+  height: 320px !important;
 }
 
 @media (max-width: 1280px) {

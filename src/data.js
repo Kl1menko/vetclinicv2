@@ -100,27 +100,27 @@ export const DOCTORS = [
 export const ARTICLES = [
   { id: 'a1', title: 'Як підготувати тварину до першого візиту', tag: 'Поради', read: 4,
     excerpt: 'Прості кроки, щоб зробити прийом спокійним для вас і вашого улюбленця.',
-    cover: 'https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=900&q=80&auto=format&fit=crop',
+    cover: 'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=900&q=80&auto=format&fit=crop',
     date: '12 квітня 2026' },
   { id: 'a2', title: 'Календар вакцинації котів і собак', tag: 'Вакцинація', read: 6,
     excerpt: 'Коли ставити щеплення, чим відрізняються комплексні препарати.',
-    cover: 'https://images.unsplash.com/photo-1576201836106-db1758fd1c97?w=900&q=80&auto=format&fit=crop',
+    cover: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=900&q=80&auto=format&fit=crop',
     date: '03 квітня 2026' },
   { id: 'a3', title: 'Ознаки болю у тварин, які власники часто пропускають', tag: 'Здоров\'я', read: 5,
     excerpt: 'Зміна поведінки, апетиту, постави — на що звертати увагу.',
-    cover: 'https://images.unsplash.com/photo-1444212477490-ca407925329e?w=900&q=80&auto=format&fit=crop',
+    cover: 'https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=900&q=80&auto=format&fit=crop',
     date: '28 березня 2026' },
   { id: 'a4', title: 'Харчування літніх собак: що змінити після 7 років', tag: 'Харчування', read: 7,
     excerpt: 'Калорійність, білок, добавки для суглобів — короткий гід.',
-    cover: 'https://images.unsplash.com/photo-1583511655802-41096612a6cb?w=900&q=80&auto=format&fit=crop',
+    cover: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=900&q=80&auto=format&fit=crop',
     date: '20 березня 2026' },
   { id: 'a5', title: 'Чищення зубів вдома: як привчити кота', tag: 'Догляд', read: 4,
     excerpt: 'Поетапний план, без стресу і боротьби.',
-    cover: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5?w=900&q=80&auto=format&fit=crop',
+    cover: 'https://images.unsplash.com/photo-1495360010541-f48722b34f7d?w=900&q=80&auto=format&fit=crop',
     date: '15 березня 2026' },
   { id: 'a6', title: 'Що робити при отруєнні тварини: перші 30 хвилин', tag: 'Невідкладна допомога', read: 5,
     excerpt: 'Чек-лист дій до приходу до клініки.',
-    cover: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=900&q=80&auto=format&fit=crop',
+    cover: 'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=900&q=80&auto=format&fit=crop',
     date: '08 березня 2026' },
 ];
 
@@ -162,4 +162,3 @@ export const PETS = [
   { id: 'p4', name: 'Лессі', species: 'Собака', breed: 'Колі', age: 2, weight: 18, owner: 'Андрій Петренко', sterilized: false, lastVisit: '2026-02-15', alerts: ['Чутливе травлення'] },
   { id: 'p5', name: 'Чарлі', species: 'Собака', breed: 'Спанієль', age: 4, weight: 12, owner: 'Марія Стасів', sterilized: true, lastVisit: '2026-04-05', alerts: [] },
 ];
-
