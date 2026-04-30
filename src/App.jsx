@@ -499,7 +499,7 @@ const Footer = ({ go, openAdmin, openLegal }) => {
           <div style={{ fontWeight: 600, color: "#fff", marginBottom: 12 }}>
             Навігація
           </div>
-          <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
+          <div style={{ display: "grid", gap: 8, fontSize: 15 }}>
             <button
               onClick={() => go("home")}
               style={{
@@ -1032,7 +1032,7 @@ export default function App() {
   const [params, setParams] = uS({});
   const [admin, setAdmin] = uS(false);
   const [adminRoute, setAdminRoute] = uS("dashboard");
-  const [adminRole, setAdminRole] = uS("admin");
+  const [adminRole, setAdminRole] = uS("Адміністратор");
   const [adminSearch, setAdminSearch] = uS("");
   const [showBooking, setShowBooking] = uS(false);
   const [showLogin, setShowLogin] = uS(false);
@@ -1154,13 +1154,43 @@ export default function App() {
     return true;
   };
 
-  const ADMIN_ROUTE_ACCESS = {
-    admin: ["dashboard","calendar","appointments","clients","pets","doctors","services","articles","messages","reports","roles","settings"],
-    doctor: ["dashboard","calendar","appointments","pets","articles"],
-    receptionist: ["dashboard","calendar","appointments","clients","pets","messages"],
+  const ROLE_ROUTE_BY_PERMISSION = {
+    'Перегляд записів': ['calendar', 'appointments'],
+    'Створення записів': ['calendar', 'appointments'],
+    'Скасування записів': ['calendar', 'appointments'],
+    'Картки пацієнтів': ['pets'],
+    'Призначення лікування': ['appointments', 'pets'],
+    'Управління статтями': ['articles'],
+    'Управління послугами': ['services'],
+    'Чат із клієнтами': ['messages'],
+    'Перегляд клієнтів': ['clients'],
+    'Управління користувачами': ['clients', 'doctors'],
+    'Управління ролями': ['roles'],
+    'Налаштування клініки': ['settings'],
+    'Перегляд фінансів': ['reports'],
+    'Експорт даних': ['reports'],
   };
-  const allowedAdminRoutes = ADMIN_ROUTE_ACCESS[adminRole] || ADMIN_ROUTE_ACCESS.admin;
+  const currentRoleConfig = (store.roles || []).find(r => r.name === adminRole) || (store.roles || [])[0];
+  const rolePermissions = currentRoleConfig?.perms || [];
+  const hasPermission = (permission) =>
+    rolePermissions.includes('Усі права') || rolePermissions.includes(permission);
+  const allowedAdminRoutes = uM(() => {
+    const full = ['dashboard','calendar','appointments','clients','pets','doctors','services','articles','messages','reports','roles','settings'];
+    if (!currentRoleConfig) return full;
+    if ((currentRoleConfig.perms || []).includes('Усі права')) return full;
+    const routes = new Set(['dashboard']);
+    (currentRoleConfig.perms || []).forEach((perm) => {
+      (ROLE_ROUTE_BY_PERMISSION[perm] || []).forEach(route => routes.add(route));
+    });
+    return full.filter(route => routes.has(route));
+  }, [currentRoleConfig]);
   const canAccessAdminRoute = (route) => allowedAdminRoutes.includes(route);
+
+  uE(() => {
+    const names = (store.roles || []).map(r => r.name);
+    if (!names.length) return;
+    if (!names.includes(adminRole)) setAdminRole(names[0]);
+  }, [store.roles, adminRole]);
 
   uE(() => {
     const root = document.documentElement;
@@ -1213,25 +1243,28 @@ export default function App() {
           role={adminRole}
           search={adminSearch}
           setRoute={setAdminRoute}
+          permissions={rolePermissions}
         />
       ),
-      calendar: <AdminCalendar search={adminSearch} notify={showToast} />,
-      appointments: <AdminAppointments search={adminSearch} notify={showToast} />,
-      clients: <AdminClients search={adminSearch} notify={showToast} />,
-      pets: <AdminPets search={adminSearch} notify={showToast} />,
-      doctors: <AdminDoctors search={adminSearch} notify={showToast} />,
-      services: <AdminServices search={adminSearch} notify={showToast} />,
-      articles: <AdminArticles search={adminSearch} notify={showToast} />,
-      messages: <AdminMessages search={adminSearch} notify={showToast} />,
-      reports: <AdminReports notify={showToast} />,
-      roles: <AdminRoles notify={showToast} />,
-      settings: <AdminSettings notify={showToast} />,
+      calendar: <AdminCalendar search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      appointments: <AdminAppointments search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      clients: <AdminClients search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      pets: <AdminPets search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      doctors: <AdminDoctors search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      services: <AdminServices search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      articles: <AdminArticles search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      messages: <AdminMessages search={adminSearch} notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      reports: <AdminReports notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      roles: <AdminRoles notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
+      settings: <AdminSettings notify={showToast} permissions={rolePermissions} hasPermission={hasPermission} />,
     };
     const effectiveRoute = canAccessAdminRoute(adminRoute) ? adminRoute : allowedAdminRoutes[0];
     const forbiddenView = (
-      <div style={{maxWidth:680, background:'#0f2120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:24}}>
-        <h2 style={{fontSize:24, color:'#fff', marginBottom:8}}>Доступ обмежено</h2>
-        <p style={{color:'#8aa6a4', fontSize:14}}>У ролі «{adminRole === 'admin' ? 'Адміністратор' : adminRole === 'doctor' ? 'Лікар' : 'Реєстратор'}» ця сторінка недоступна.</p>
+      <div style={{minHeight:'calc(100vh - 150px)', display:'grid', placeItems:'center'}}>
+        <div style={{width:'100%', maxWidth:680, background:'#0f2120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:24}}>
+          <h2 style={{fontSize:24, color:'#fff', marginBottom:8}}>Доступ обмежено</h2>
+          <p style={{color:'#8aa6a4', fontSize:14}}>У ролі «{adminRole}» ця сторінка недоступна.</p>
+        </div>
       </div>
     );
     return (
@@ -1241,6 +1274,7 @@ export default function App() {
           setRoute={(route) => setAdminRoute(canAccessAdminRoute(route) ? route : (allowedAdminRoutes[0] || "dashboard"))}
           role={adminRole}
           setRole={setAdminRole}
+          roleOptions={(store.roles || []).map(r => r.name)}
           exitAdmin={() => setAdmin(false)}
           search={adminSearch}
           setSearch={setAdminSearch}
