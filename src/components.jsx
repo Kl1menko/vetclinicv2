@@ -28,6 +28,7 @@ export const Icon = ({ name, size = 18, color = 'currentColor', strokeWidth = 1.
     chevLeft: <path d="M15 6l-6 6 6 6"/>,
     plus: <><path d="M12 5v14M5 12h14"/></>,
     check: <path d="M20 6L9 17l-5-5"/>,
+    alert: <><path d="M12 3L2 21h20L12 3z"/><path d="M12 9v5"/><path d="M12 18h.01"/></>,
     x: <><path d="M18 6L6 18M6 6l12 12"/></>,
     search: <><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></>,
     filter: <path d="M3 5h18M6 12h12M10 19h4"/>,
@@ -134,7 +135,7 @@ export const Avatar = ({ name = '', size = 40, color }) => {
 };
 
 // Status pill
-export const StatusPill = ({ status }) => {
+export const StatusPill = ({ status, compact = false }) => {
   const map = {
     confirmed:    { c: 'teal', t: 'Підтверджено' },
     'in-progress':{ c: 'amber', t: 'На прийомі' },
@@ -145,7 +146,14 @@ export const StatusPill = ({ status }) => {
     new:          { c: 'amber', t: 'Новий' },
   };
   const m = map[status] || { c: 'teal', t: status };
-  return <span className={`chip chip-${m.c}`}>{m.t}</span>;
+  return (
+    <span
+      className={`chip chip-${m.c}`}
+      style={compact ? { fontSize: 11, padding: '5px 10px', borderRadius: 999 } : undefined}
+    >
+      {m.t}
+    </span>
+  );
 };
 
 // Star rating
@@ -156,4 +164,3 @@ export const Stars = ({ rating, size = 14 }) => (
     ))}
   </div>
 );
-

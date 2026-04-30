@@ -245,12 +245,12 @@ export const HomePage = ({ go, openBooking }) => {
       <section style={{padding:'48px 0 96px'}}>
         <div className="container">
           <div className="home-cta" style={{padding:'56px 56px', borderRadius:28, background:'linear-gradient(135deg, var(--teal-600), var(--teal-800))', color:'#fff', display:'grid', gridTemplateColumns:'1.5fr 1fr', gap:32, alignItems:'center', position:'relative', overflow:'hidden'}}>
-            <div style={{position:'absolute', top:-60, right:-60, width:300, height:300, borderRadius:'50%', background:'var(--coral-500)', opacity:.15}}/>
-            <div>
+            <div style={{position:'absolute', top:-60, right:-60, width:300, height:300, borderRadius:'50%', background:'var(--coral-500)', opacity:.15, pointerEvents:'none'}}/>
+            <div style={{position:'relative', zIndex:1}}>
               <h2 style={{fontSize:38, color:'#fff', marginBottom:14}}>Готові записатися?</h2>
               <p style={{fontSize:17, opacity:.85, maxWidth:520}}>Виберіть зручний час, лікаря та послугу. Ми підтвердимо запис протягом 15 хвилин.</p>
             </div>
-            <div style={{display:'flex', gap:12, justifySelf:'end'}}>
+            <div style={{display:'flex', gap:12, justifySelf:'end', position:'relative', zIndex:1}}>
               <button className="btn btn-coral btn-lg" onClick={openBooking}>Записатись онлайн</button>
               <a href="tel:+380636798977" className="btn btn-lg" style={{background:'rgba(255,255,255,0.12)', color:'#fff'}}><Icon name="phone" size={16}/> Подзвонити</a>
             </div>

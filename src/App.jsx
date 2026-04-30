@@ -775,7 +775,7 @@ const LoginModal = ({ onClose, onLogin, onRegister }) => {
         className="card pop"
         onClick={(e) => e.stopPropagation()}
         style={{
-          padding: 32,
+          padding: "56px 32px 32px",
           maxWidth: 420,
           width: "100%",
           position: "relative",
@@ -783,15 +783,16 @@ const LoginModal = ({ onClose, onLogin, onRegister }) => {
       >
         <button
           onClick={onClose}
+          aria-label="Закрити"
           style={{
             position: "absolute",
-            top: 16,
-            right: 16,
+            top: 18,
+            right: 18,
             border: 0,
             background: "var(--ink-100)",
             borderRadius: "50%",
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             display: "grid",
             placeItems: "center",
             cursor: "pointer",
@@ -1046,6 +1047,14 @@ export default function App() {
     return true;
   };
 
+  const ADMIN_ROUTE_ACCESS = {
+    admin: ["dashboard","calendar","appointments","clients","pets","doctors","services","articles","messages","reports","roles","settings"],
+    doctor: ["dashboard","calendar","appointments","pets","articles"],
+    receptionist: ["dashboard","calendar","appointments","clients","pets","messages"],
+  };
+  const allowedAdminRoutes = ADMIN_ROUTE_ACCESS[adminRole] || ADMIN_ROUTE_ACCESS.admin;
+  const canAccessAdminRoute = (route) => allowedAdminRoutes.includes(route);
+
   uE(() => {
     const root = document.documentElement;
     // Brand palette derived from THEME.primaryColor (#7579EA)
@@ -1083,32 +1092,40 @@ export default function App() {
       appointments: <AdminAppointments search={adminSearch} notify={showToast} />,
       clients: <AdminClients search={adminSearch} notify={showToast} />,
       pets: <AdminPets search={adminSearch} notify={showToast} />,
-      doctors: <AdminDoctors search={adminSearch} />,
-      services: <AdminServices search={adminSearch} />,
-      articles: <AdminArticles search={adminSearch} />,
+      doctors: <AdminDoctors search={adminSearch} notify={showToast} />,
+      services: <AdminServices search={adminSearch} notify={showToast} />,
+      articles: <AdminArticles search={adminSearch} notify={showToast} />,
       messages: <AdminMessages search={adminSearch} notify={showToast} />,
       reports: <AdminReports notify={showToast} />,
       roles: <AdminRoles notify={showToast} />,
       settings: <AdminSettings notify={showToast} />,
     };
+    const effectiveRoute = canAccessAdminRoute(adminRoute) ? adminRoute : allowedAdminRoutes[0];
+    const forbiddenView = (
+      <div style={{maxWidth:680, background:'#0f2120', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:24}}>
+        <h2 style={{fontSize:24, color:'#fff', marginBottom:8}}>Доступ обмежено</h2>
+        <p style={{color:'#8aa6a4', fontSize:14}}>У ролі «{adminRole === 'admin' ? 'Адміністратор' : adminRole === 'doctor' ? 'Лікар' : 'Реєстратор'}» ця сторінка недоступна.</p>
+      </div>
+    );
     return (
       <>
         <AdminLayout
-          current={adminRoute}
-          setRoute={setAdminRoute}
+          current={effectiveRoute}
+          setRoute={(route) => setAdminRoute(canAccessAdminRoute(route) ? route : (allowedAdminRoutes[0] || "dashboard"))}
           role={adminRole}
           setRole={setAdminRole}
           exitAdmin={() => setAdmin(false)}
           search={adminSearch}
           setSearch={setAdminSearch}
+          allowedRoutes={allowedAdminRoutes}
         >
-          {adminPages[adminRoute] || (
+          {canAccessAdminRoute(adminRoute) ? (adminPages[adminRoute] || (
             <AdminDashboard
               role={adminRole}
               search={adminSearch}
               setRoute={setAdminRoute}
             />
-          )}
+          )) : forbiddenView}
         </AdminLayout>
         {toast && (
           <div className="toast">

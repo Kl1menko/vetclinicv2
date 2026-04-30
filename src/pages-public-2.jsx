@@ -8,6 +8,17 @@ import { useStore } from './store.jsx';
 // =================================================================
 export const BookingPage = ({ go, showToast }) => {
   const { services, doctors, appointments, addAppointment, currentUser, settings } = useStore();
+  const petSpeciesOptions = [
+    { v:'cat', l:'Кіт', i:'cat', c:'violet' },
+    { v:'dog', l:'Собака', i:'dog', c:'coral' },
+    { v:'rabbit', l:'Кролик', i:'rabbit', c:'teal' },
+    { v:'bird', l:'Птах', i:null, c:'amber' },
+    { v:'ferret', l:'Тхір', i:null, c:'rose' },
+    { v:'rodent', l:'Гризун', i:null, c:'green' },
+    { v:'reptile', l:'Рептилія', i:null, c:'violet' },
+    { v:'other', l:'Інше', i:null, c:'teal' },
+  ];
+  const petSpeciesLabel = petSpeciesOptions.reduce((acc, item) => ({ ...acc, [item.v]: item.l }), {});
   const [step, setStep] = uS2(1);
   const [form, setForm] = uS2({
     petName:'', petSpecies:'cat', petBreed:'', petAge:'',
@@ -77,7 +88,7 @@ export const BookingPage = ({ go, showToast }) => {
       const result = addAppointment({
         ...form,
         name: form.name || currentUser?.name,
-        petType: ({ cat:'Кіт', dog:'Собака', rabbit:'Кролик', other:'Інше' })[form.petSpecies] || form.petSpecies,
+        petType: petSpeciesLabel[form.petSpecies] || form.petSpecies,
       });
       if (!result.ok) {
         showToast(result.error);
@@ -144,15 +155,22 @@ export const BookingPage = ({ go, showToast }) => {
                   </div>
                   <label className="label">Вид</label>
                   <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:14}}>
-                    {[
-                      {v:'cat', l:'Кіт', i:'cat'},
-                      {v:'dog', l:'Собака', i:'dog'},
-                      {v:'rabbit', l:'Кролик', i:'rabbit'},
-                      {v:'other', l:'Інше', i:null},
-                    ].map(p => (
+                    {petSpeciesOptions.map(p => (
                       <button key={p.v} onClick={()=>update('petSpecies', p.v)}
-                        style={{padding:14, borderRadius:14, border: form.petSpecies===p.v?'2px solid var(--teal-500)':'1.5px solid var(--ink-200)', background: form.petSpecies===p.v?'var(--teal-50)':'var(--paper)', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:6}}>
-                        {p.i ? <PetIllustration kind={p.i} color="teal" size={48}/> : <div style={{width:48, height:48, borderRadius:12, background:'var(--ink-100)', display:'grid', placeItems:'center'}}><Icon name="paw" size={24} color="var(--ink-500)"/></div>}
+                        style={{
+                          padding:14,
+                          borderRadius:14,
+                          border: form.petSpecies===p.v ? `2px solid var(--${p.c}-500)` : '1.5px solid var(--ink-200)',
+                          background: form.petSpecies===p.v ? `var(--${p.c}-100)` : 'var(--paper)',
+                          cursor:'pointer',
+                          display:'flex',
+                          flexDirection:'column',
+                          alignItems:'center',
+                          gap:6,
+                        }}>
+                        {p.i
+                          ? <PetIllustration kind={p.i} color={p.c} size={48}/>
+                          : <div style={{width:48, height:48, borderRadius:12, background:`var(--${p.c}-100)`, display:'grid', placeItems:'center'}}><Icon name="paw" size={24} color={`var(--${p.c}-700)`}/></div>}
                         <div style={{fontSize:13, fontWeight:600}}>{p.l}</div>
                       </button>
                     ))}
