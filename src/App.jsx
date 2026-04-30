@@ -361,7 +361,7 @@ const LegalModal = ({ kind, onClose }) => {
   return (
     <div className="backdrop" onClick={onClose}>
       <div
-        className="card pop"
+        className="card pop quick-booking-modal"
         onClick={(e) => e.stopPropagation()}
         style={{
           padding: 32,
@@ -414,7 +414,17 @@ const Footer = ({ go, openAdmin, openLegal }) => {
   const { settings } = useStore();
   const workingDays = settings.schedule.filter((row) => row.from !== "—" && row.to !== "—");
   const weekendDays = settings.schedule.filter((row) => row.from === "—" || row.to === "—");
-  const shortDay = (day) => day.slice(0, 2);
+  const shortDay = (day) =>
+    ({
+      Понеділок: "Пн",
+      Вівторок: "Вт",
+      Середа: "Ср",
+      Четвер: "Чт",
+      "Пʼятниця": "Пт",
+      "П'ятниця": "Пт",
+      Субота: "Сб",
+      Неділя: "Нд",
+    }[day] || day.slice(0, 2));
   const rangeLabel = (rows) => {
     if (!rows.length) return null;
     const first = rows[0];
@@ -692,7 +702,7 @@ const QuickBookingModal = ({ onClose, onConfirm, services }) => {
         <p style={{ color: "var(--ink-500)", marginBottom: 20, fontSize: 14 }}>
           Ми зателефонуємо протягом 15 хвилин і підберемо зручний час.
         </p>
-        <div style={{ display: "grid", gap: 14 }}>
+        <div className="quick-booking-fields" style={{ display: "grid", gap: 14 }}>
           <div>
             <input
               className="input"
@@ -735,7 +745,7 @@ const QuickBookingModal = ({ onClose, onConfirm, services }) => {
             value={data.notes}
             onChange={(e) => setData({ ...data, notes: e.target.value })}
           />
-          <button className="btn btn-primary btn-lg" onClick={submit}>
+          <button className="btn btn-primary btn-lg quick-booking-submit" onClick={submit}>
             Надіслати заявку
           </button>
         </div>

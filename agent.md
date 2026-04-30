@@ -279,6 +279,64 @@
 - `store.jsx`: додано `DEFAULT_ROLES`, exported `ALL_PERMISSIONS`; persist ролей у localStorage.
 - `pages-admin.jsx`: `AdminRoles` працює з store-ролями, підтримує rename/delete; `AdminAppointments` має autocomplete; `AdminSettings` локальний draft + Save bar; виділено admin primitives.
 
+## Roadmap: Telegram/Viber Auth (поетапно)
+
+### Важливо
+- Поточна архітектура (`React + localStorage`, без бекенда) не дозволяє безпечну авторизацію через Telegram/Viber.
+- Для цього потрібен сервер, БД користувачів, OTP/verification flow, сесії через API (JWT/refresh), а не клієнтський псевдо-логін.
+
+### Етапи реалізації
+1. Додати бекенд + таблицю `users` (база для auth і звʼязок акаунтів).
+2. Запустити спочатку Telegram login (швидше й стабільніше).
+3. Підключити Viber тим самим OTP-flow.
+4. Прибрати фронтовий псевдо-логін і перейти на API-сесію.
+
+### Що має бути в data model
+- `users`: `id`, `name`, `phone`, `email`, `password_hash?`, `telegram_id?`, `viber_id?`, `created_at`, `updated_at`.
+- `auth_sessions` / `refresh_tokens`.
+- `otp_codes`: `channel (telegram|viber|sms)`, `code_hash`, `expires_at`, `attempts`.
+
+### Технічні примітки
+- Telegram: Bot API + deep link/код підтвердження.
+- Viber: Public Account/Bot API + код підтвердження.
+- На фронті: кнопки «Увійти через Telegram» / «Увійти через Viber», polling/confirm state.
+- На бекенді: rate limit, anti-bruteforce, логи аудиту.
+
+### Статус
+- ⏳ Заплановано, реалізація ще не починалась (на поточний момент).
+
+### 2026-04-30 — updates (UI/UX + admin + booking)
+
+- Admin ACL:
+  - додано обмеження доступу по ролях у адмінці (видимість пунктів меню + guard роута),
+  - ролі: `admin`, `doctor`, `receptionist`.
+- Admin delete feedback:
+  - `deleteClient` / `deletePet` у `store.jsx` повертають `{ ok, error }`,
+  - UI показує toast-пояснення, якщо видалення заблоковане активними записами.
+- Admin Appointments:
+  - кнопка «Фільтри» стала робочою (лікар, послуга, оплата, діапазон дат, reset).
+- Admin notifications:
+  - стабілізовано звук нових повідомлень (один `AudioContext`, unlock через взаємодію),
+  - у dropdown показуються реальні непрочитані повідомлення (текст, дата, контакт),
+  - якщо нових немає: «Немає нових сповіщень»,
+  - прибрано статичні медичні попередження з dropdown.
+- Home mobile UI:
+  - виправлено переповнення/відступи на малих екранах,
+  - центровано hero-текст і вирівнювання тексту в кнопках на ≤520,
+  - виправлено клікабельність CTA-блоку (декор не перехоплює кліки).
+- Booking (public form):
+  - додано нові види тварин: `Птах`, `Тхір`, `Гризун`, `Рептилія`,
+  - для видів додано різні кольори карток/акцентів,
+  - оновлено мапінг `petSpecies -> petType` для правильних українських лейблів.
+- Footer:
+  - виправлено скорочення днів (`Пн/Вт/.../Сб/Нд`), щоб не було `Су–Не`.
+- Login modal:
+  - збільшено відступи для кнопки закриття (`X`) від полів.
+- Admin forms:
+  - додано інформативні placeholder-и у модалках «Новий клієнт» / «Нова тварина».
+- Git:
+  - зміни закомічено та запушено в `main`: `f9f1318` (плюс наступні дрібні правки після цього коміту).
+
 ## Конвенції для агентів
 
 - Не повертати tweaks-панель. Тема — статична константа `THEME`.

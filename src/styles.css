@@ -652,11 +652,27 @@ img, svg, video, canvas, iframe { max-width: 100%; }
   }
   div[data-screen-label="Home"] .home-hero-grid > div > div[style*="display:flex"][style*="gap:12px"] {
     align-items: center !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100%;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  div[data-screen-label="Home"] .home-hero-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    width: 100% !important;
+    padding-left: 4px;
+    padding-right: 4px;
   }
   div[data-screen-label="Home"] .home-hero-grid .btn {
     text-align: center !important;
     justify-content: center !important;
     align-items: center !important;
+    width: 100% !important;
+    min-height: 52px;
   }
 
   /* Hero stats row → 2-col grid */
@@ -678,6 +694,26 @@ img, svg, video, canvas, iframe { max-width: 100%; }
 
   .card[style*="padding:28px"] { padding: 20px !important; }
   .card[style*="padding:24px"] { padding: 18px !important; }
+
+  /* Quick booking modal: avoid iOS zoom/layout jump with keyboard */
+  .quick-booking-modal {
+    max-height: calc(100dvh - 8px) !important;
+    overflow-y: auto !important;
+    padding: 24px 14px calc(14px + env(safe-area-inset-bottom)) !important;
+  }
+  .quick-booking-modal .input,
+  .quick-booking-modal select.input,
+  .quick-booking-modal textarea.input {
+    font-size: 16px !important;
+    line-height: 1.35;
+  }
+  .quick-booking-submit {
+    width: 100% !important;
+    min-height: 52px;
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
 }
 
 /* Admin appointments table: compact + horizontal scroll fallback */

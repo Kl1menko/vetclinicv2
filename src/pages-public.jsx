@@ -21,7 +21,7 @@ export const HomePage = ({ go, openBooking }) => {
             <p className="home-hero-lead" style={{fontSize:18, color:'var(--ink-600)', maxWidth:520, marginBottom:32}}>
               Сучасна клініка у Львові з онлайн-записом, прозорими цінами та власним кабінетом, де зберігається вся медична історія вашого улюбленця.
             </p>
-            <div style={{display:'flex', gap:12, alignItems:'center'}}>
+            <div className="home-hero-actions" style={{display:'flex', gap:12, alignItems:'center'}}>
               <button className="btn btn-primary btn-lg" onClick={openBooking}>
                 <Icon name="calendar" size={16} color="#fff"/> Записатись на прийом
               </button>
