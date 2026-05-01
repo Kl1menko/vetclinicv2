@@ -1,7 +1,7 @@
 import { createHash, createHmac } from 'crypto';
-import { getDb } from '../_lib/db.js';
-import { signAccess, generateRefreshToken, hashToken, refreshCookieOptions } from '../_lib/jwt.js';
-import { cors, err, readBody } from '../_lib/cors.js';
+import { getDb } from '../../lib/db.js';
+import { signAccess, generateRefreshToken, hashToken, refreshCookieOptions } from '../../lib/jwt.js';
+import { cors, err, readBody } from '../../lib/cors.js';
 
 function verifyTelegramHash(data) {
   const { hash, ...fields } = data;

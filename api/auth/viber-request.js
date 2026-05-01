@@ -1,7 +1,7 @@
 import { randomInt } from 'crypto';
 import { createHash } from 'crypto';
-import { getDb } from '../_lib/db.js';
-import { cors, err, readBody } from '../_lib/cors.js';
+import { getDb } from '../../lib/db.js';
+import { cors, err, readBody } from '../../lib/cors.js';
 import ViberBot, { Message } from 'viber-bot';
 
 function getBot() {

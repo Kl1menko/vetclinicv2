@@ -1,6 +1,6 @@
 // One-time setup: sets bot commands and description
 // Call once after deploy: GET /api/setup/telegram?secret=YOUR_JWT_SECRET
-import { cors } from '../_lib/cors.js';
+import { cors } from '../../lib/cors.js';
 
 export default async function handler(req, res) {
   cors(res);

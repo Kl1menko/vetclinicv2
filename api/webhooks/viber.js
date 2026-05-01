@@ -1,6 +1,6 @@
 import { randomInt, createHash } from 'crypto';
-import { getDb } from '../_lib/db.js';
-import { cors } from '../_lib/cors.js';
+import { getDb } from '../../lib/db.js';
+import { cors } from '../../lib/cors.js';
 
 // Viber Bot SDK uses CommonJS — dynamic import for ESM compat
 async function getBot() {

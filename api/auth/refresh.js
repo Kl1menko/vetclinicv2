@@ -1,6 +1,6 @@
-import { getDb } from '../_lib/db.js';
-import { signAccess, generateRefreshToken, hashToken, refreshCookieOptions } from '../_lib/jwt.js';
-import { cors, err } from '../_lib/cors.js';
+import { getDb } from '../../lib/db.js';
+import { signAccess, generateRefreshToken, hashToken, refreshCookieOptions } from '../../lib/jwt.js';
+import { cors, err } from '../../lib/cors.js';
 
 function parseCookie(str = '') {
   return Object.fromEntries(str.split(';').map(p => p.trim().split('=').map(decodeURIComponent)));

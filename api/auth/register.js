@@ -1,7 +1,7 @@
-import { getDb } from '../_lib/db.js';
-import { hashPassword } from '../_lib/hash.js';
-import { signAccess, generateRefreshToken, hashToken, refreshCookieOptions } from '../_lib/jwt.js';
-import { cors, err, readBody } from '../_lib/cors.js';
+import { getDb } from '../../lib/db.js';
+import { hashPassword } from '../../lib/hash.js';
+import { signAccess, generateRefreshToken, hashToken, refreshCookieOptions } from '../../lib/jwt.js';
+import { cors, err, readBody } from '../../lib/cors.js';
 
 export default async function handler(req, res) {
   cors(res);

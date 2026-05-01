@@ -85,7 +85,7 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
     if (!token) return;
     setLoadingConversations(true);
     try {
-      const data = await api('/api/chat/conversations');
+      const data = await api('/api/chat?action=conversations');
       setConversations(data.conversations || []);
       if (!activeId && data.conversations?.length) setActiveId(data.conversations[0].id);
       if (activeId && !(data.conversations || []).some((c) => c.id === activeId)) {
@@ -101,7 +101,7 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
   const loadContacts = async () => {
     if (!token) return;
     try {
-      const data = await api('/api/chat/users?limit=50');
+      const data = await api('/api/chat?action=users&limit=50');
       setContacts(data.users || []);
     } catch {}
   };
@@ -110,13 +110,13 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
     if (!token || !conversationId) return;
     setLoadingMessages(true);
     try {
-      const data = await api(`/api/chat/messages?conversationId=${encodeURIComponent(conversationId)}`);
+      const data = await api(`/api/chat?action=messages&conversationId=${encodeURIComponent(conversationId)}`);
       const list = data.messages || [];
       setMessages(list);
       setReadMeta(data.readMeta || { lastReadAtByOthers: null });
       const last = list[list.length - 1];
       if (last?.id && last?.sender_user_id !== user.id) {
-        api('/api/chat/read', {
+        api('/api/chat?action=read', {
           method: 'POST',
           body: JSON.stringify({ conversationId, lastReadMessageId: last.id }),
         }).catch(() => {});
@@ -261,7 +261,7 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
       return;
     }
     try {
-      const data = await api('/api/chat/conversations', {
+      const data = await api('/api/chat?action=conversations', {
         method: 'POST',
         body: JSON.stringify({ participantUserId: selectedContact }),
       });
@@ -276,7 +276,7 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
 
   const openAttachment = async (path) => {
     try {
-      const data = await api(`/api/chat/file?path=${encodeURIComponent(path)}`);
+      const data = await api(`/api/chat?action=file&path=${encodeURIComponent(path)}`);
       if (data.url) window.open(data.url, '_blank', 'noopener,noreferrer');
     } catch (e) {
       showToast(e.message || 'Не вдалося відкрити файл');
@@ -293,7 +293,7 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
       const uploaded = [];
       for (const file of files) {
         const dataUrl = await fileToDataUrl(file);
-        const uploadedFile = await api('/api/chat/upload', {
+        const uploadedFile = await api('/api/chat?action=upload', {
           method: 'POST',
           body: JSON.stringify({
             conversationId: activeId,
@@ -304,7 +304,7 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
         if (uploadedFile.attachment) uploaded.push(uploadedFile.attachment);
       }
 
-      await api('/api/chat/messages', {
+      await api('/api/chat?action=messages', {
         method: 'POST',
         body: JSON.stringify({
           conversationId: activeId,

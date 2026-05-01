@@ -1,6 +1,6 @@
-import { getDb } from '../_lib/db.js';
-import { verifyAccess } from '../_lib/jwt.js';
-import { cors, err, readBody } from '../_lib/cors.js';
+import { getDb } from '../../lib/db.js';
+import { verifyAccess } from '../../lib/jwt.js';
+import { cors, err, readBody } from '../../lib/cors.js';
 
 export default async function handler(req, res) {
   cors(res);
