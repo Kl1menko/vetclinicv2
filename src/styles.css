@@ -880,7 +880,7 @@ img, svg, video, canvas, iframe { max-width: 100%; }
 .profile-tab-nav { display: none; }
 
 /* Content */
-.profile-main { min-width: 0; }
+.profile-main { min-width: 0; min-height: 60vh; }
 .profile-content-header {
   display: flex;
   align-items: center;

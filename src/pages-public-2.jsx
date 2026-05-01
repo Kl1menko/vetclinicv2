@@ -1,6 +1,6 @@
 // Public pages — part 2: Booking, About, Contacts, Prices, Articles, Profile
 import React, { useState as uS2, useMemo as uM2, useEffect as uE2 } from 'react';
-import { Icon, PetIllustration, Avatar, StatusPill, Stars } from './components.jsx';
+import { Icon, PetIllustration, Avatar, StatusPill, Stars, calcPetAge, petSpeciesColor, petSpeciesKind } from './components.jsx';
 import { useStore } from './store.jsx';
 
 const ArticleCoverImage = ({ src, alt, height = 180, radius = 0, className = '' }) => {
@@ -729,8 +729,7 @@ export const ArticlePage = ({ go, params }) => {
 // PROFILE
 // =================================================================
 const MONTHS_SHORT = ['СІЧ','ЛЮТ','БЕР','КВТ','ТРВ','ЧРВ','ЛИП','СРП','ВРС','ЖОВ','ЛСТ','ГРД'];
-const PET_COLORS = ['teal','coral','violet','amber','green'];
-const PET_KIND = s => s === 'Кіт' ? 'cat' : s === 'Собака' ? 'dog' : s === 'Кролик' ? 'rabbit' : 'cat';
+const petAgeLabel = (p) => calcPetAge(p.birthDate) || (p.age ? `${p.age} р.` : null);
 
 const EmptyState = ({ icon, title, text, action, onAction }) => (
   <div style={{ textAlign: 'center', padding: '48px 24px' }}>
@@ -767,8 +766,11 @@ const PetFormModal = ({ form, onClose, onSave }) => (
             <input className="input" placeholder="Мейн-кун" value={form.breed || ''} onChange={e => form._set('breed', e.target.value)} />
           </div>
           <div>
-            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Вік (р.)</label>
-            <input className="input" placeholder="2" inputMode="numeric" value={form.age || ''} onChange={e => form._set('age', e.target.value.replace(/\D/g, ''))} />
+            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+              Дата народження
+              {form.birthDate && <span style={{ fontWeight: 400, marginLeft: 6, color: 'var(--teal-600)' }}>{calcPetAge(form.birthDate)}</span>}
+            </label>
+            <input className="input" type="date" max={new Date().toISOString().slice(0,10)} value={form.birthDate || ''} onChange={e => form._set('birthDate', e.target.value)} />
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Вага (кг)</label>
@@ -857,7 +859,8 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
     const result = savePet({
       ...petFormData,
       owner: user?.name || '',
-      age: Number(petFormData.age || 0),
+      birthDate: petFormData.birthDate || null,
+      age: petFormData.birthDate ? Math.max(0, new Date().getFullYear() - new Date(petFormData.birthDate).getFullYear()) : Number(petFormData.age || 0),
       weight: Number(petFormData.weight || 0),
       alerts: String(petFormData.alertsText || '').split(',').map(x => x.trim()).filter(Boolean),
     });
@@ -1033,12 +1036,12 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
                     {myPets.map((p, i) => (
                       <div key={p.id || i} className="card pet-card">
                         <div className="pet-card-visual">
-                          <PetIllustration kind={PET_KIND(p.species)} color={PET_COLORS[i % PET_COLORS.length]} size={80} />
+                          <PetIllustration kind={petSpeciesKind(p.species)} color={petSpeciesColor(p.species)} size={80} />
                         </div>
                         <div className="pet-card-body">
                           <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700 }}>{p.name}</div>
                           <div style={{ fontSize: 13, color: 'var(--ink-500)', margin: '2px 0 10px' }}>
-                            {[p.species, p.breed, p.age ? `${p.age} р.` : null].filter(Boolean).join(' · ')}
+                            {[p.species, p.breed, petAgeLabel(p)].filter(Boolean).join(' · ')}
                           </div>
                           <div className="pet-card-stats">
                             {p.weight ? <div className="pet-stat"><span style={{ color: 'var(--ink-400)' }}>Вага</span><strong>{p.weight} кг</strong></div> : null}

@@ -1,6 +1,6 @@
 // Admin pages
 import React, { useState as uA, useMemo as uMA } from 'react';
-import { Icon, Logo, PetIllustration, Avatar, StatusPill, Stars } from './components.jsx';
+import { Icon, Logo, PetIllustration, Avatar, StatusPill, Stars, calcPetAge, petSpeciesColor, petSpeciesKind } from './components.jsx';
 import { useStore, ALL_PERMISSIONS as ALL_ROLE_PERMISSIONS } from './store.jsx';
 
 const UK_WEEKDAYS = ['Неділя','Понеділок','Вівторок','Середа','Четвер','Пʼятниця','Субота'];
@@ -1075,24 +1075,9 @@ export const AdminClients = ({ search = '', notify = () => {}, hasPermission = (
 export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () => true }) => {
   const { pets, clients, appointments, medicalRecords, vaccinations, savePet, deletePet } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
-  const speciesKind = (species) => {
-    const key = String(species || '').toLowerCase();
-    if (key === 'кіт') return 'cat';
-    if (key === 'собака') return 'dog';
-    if (key === 'кролик') return 'rabbit';
-    return 'other';
-  };
-  const speciesColor = (species) => {
-    const key = String(species || '').toLowerCase();
-    if (key === 'кіт') return 'violet';
-    if (key === 'собака') return 'coral';
-    if (key === 'кролик') return 'teal';
-    if (key === 'птах') return 'amber';
-    if (key === 'тхір') return 'rose';
-    if (key === 'гризун') return 'green';
-    if (key === 'рептилія') return 'violet';
-    return 'teal';
-  };
+  const speciesKind = petSpeciesKind;
+  const speciesColor = petSpeciesColor;
+  const petAge = (p) => calcPetAge(p.birthDate) || (p.age ? `${p.age} р.` : '—');
   const visible = pets.filter(p => matches(p, search));
   const clientOptions = uMA(() => Array.from(new Set(clients.map(c => c.name))), [clients]);
   const [selectedId, setSelectedId] = uA(pets[0]?.id);
@@ -1121,7 +1106,8 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
   ].sort((a,b)=>String(b.date).localeCompare(String(a.date))) : [], [medicalRecords, petAppointments, selected]);
   const save = () => {
     if (!hasPermission('Картки пацієнтів')) return notify('Недостатньо прав для редагування карток тварин.');
-    const payload = { ...form, age: toNum(form.age, 0), weight: toNum(form.weight, 0), alerts: csv(form.alertsText) };
+    const computedAge = form.birthDate ? Math.max(0, new Date().getFullYear() - new Date(form.birthDate).getFullYear()) : toNum(form.age, 0);
+    const payload = { ...form, age: computedAge, weight: toNum(form.weight, 0), alerts: csv(form.alertsText) };
     const result = savePet(payload);
     if (!result.ok) return notify(result.error);
     notify(form.id ? 'Картку тварини оновлено.' : 'Картку тварини створено. Клієнта синхронізовано.');
@@ -1131,7 +1117,7 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Картки тварин</h1><p style={{color:'#8aa6a4', fontSize:14}}>{visible.length} тварин у базі</p></div>
-        <button disabled={!hasPermission('Картки пацієнтів')} className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', species:'Кіт', breed:'', age:1, weight:0, owner:'', alertsText:'' })}><Icon name="plus" size={14} color="#fff"/> Завести</button>
+        <button disabled={!hasPermission('Картки пацієнтів')} className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', species:'Кіт', breed:'', birthDate:'', weight:0, owner:'', alertsText:'' })}><Icon name="plus" size={14} color="#fff"/> Завести</button>
       </div>
       {pets.length === 0 && (
         <ACard style={{padding:48, textAlign:'center', color:'#8aa6a4'}}>
@@ -1140,7 +1126,7 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
           </div>
           <div style={{fontSize:18, color:'#fff', fontWeight:600, marginBottom:6}}>Тварин поки немає</div>
           <div style={{fontSize:14, marginBottom:18}}>Додайте першу картку через кнопку «Завести».</div>
-          <button className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', species:'Кіт', breed:'', age:1, weight:0, owner:'', alertsText:'' })}><Icon name="plus" size={14} color="#fff"/> Завести</button>
+          <button className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', species:'Кіт', breed:'', birthDate:'', weight:0, owner:'', alertsText:'' })}><Icon name="plus" size={14} color="#fff"/> Завести</button>
         </ACard>
       )}
       {pets.length > 0 && visible.length === 0 && (
@@ -1154,7 +1140,7 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
               <PetIllustration kind={speciesKind(p.species)} color={speciesColor(p.species)} size={48}/>
               <div>
                 <div style={{color:'#fff', fontWeight:600, fontSize:14}}>{p.name}</div>
-                <div style={{color:'#8aa6a4', fontSize:12}}>{p.species} · {p.breed} · {p.age} р.</div>
+                <div style={{color:'#8aa6a4', fontSize:12}}>{p.species} · {p.breed} · {petAge(p)}</div>
                 <div style={{color:'#8aa6a4', fontSize:11, marginTop:2}}>Власник: {p.owner}</div>
               </div>
             </button>
@@ -1177,7 +1163,7 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
                   })} style={{padding:'6px 12px', background:'rgba(255,255,255,0.05)', border:0, borderRadius:8, color:'#e64561', fontSize:12, cursor:'pointer'}}><Icon name="trash" size={12}/></button></div>
                 </div>
                 <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginTop:18}}>
-                  {[{l:'Вік', v:selected.age+' роки'},{l:'Вага', v:selected.weight+' кг'},{l:'Стерилізація', v:selected.sterilized?'так':'ні'},{l:'Власник', v:selected.owner}].map((d,i)=>(
+                  {[{l:'Вік', v:petAge(selected)},{l:'Вага', v:selected.weight+' кг'},{l:'Стерилізація', v:selected.sterilized?'так':'ні'},{l:'Власник', v:selected.owner}].map((d,i)=>(
                     <div key={i}><div style={{fontSize:11, color:'#8aa6a4', textTransform:'uppercase', marginBottom:4}}>{d.l}</div><div style={{color:'#fff', fontSize:14, fontWeight:600}}>{d.v}</div></div>
                   ))}
                 </div>
@@ -1257,7 +1243,7 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
           {value:'Інше', label:'Інше'},
         ]},
         {key:'breed', label:'Порода', placeholder:'Британський короткошерстий'},
-        {key:'age', label:'Вік', type:'number', placeholder:'Повних років, напр. 3'},
+        {key:'birthDate', label:'Дата народження', type:'date'},
         {key:'weight', label:'Вага', type:'number', placeholder:'кг, напр. 4.5'},
         {key:'owner', label:'Власник', type:'datalist', options:clientOptions, placeholder:'Імʼя власника'},
         {key:'ownerPhone', label:'Телефон власника', placeholder:'+380 67 123 45 67'},

@@ -53,6 +53,45 @@ export const Icon = ({ name, size = 18, color = 'currentColor', strokeWidth = 1.
   return <svg {...props}>{paths[name]}</svg>;
 };
 
+// Calculate age from ISO birth date string
+export const calcPetAge = (birthDate) => {
+  if (!birthDate) return null;
+  const born = new Date(birthDate);
+  if (isNaN(born.getTime())) return null;
+  const now = new Date();
+  const totalMonths =
+    (now.getFullYear() - born.getFullYear()) * 12 +
+    (now.getMonth() - born.getMonth()) -
+    (now.getDate() < born.getDate() ? 1 : 0);
+  if (totalMonths <= 0) return '< 1 міс.';
+  if (totalMonths < 12) return `${totalMonths} міс.`;
+  const y = Math.floor(totalMonths / 12);
+  const m = totalMonths % 12;
+  return m > 0 ? `${y} р. ${m} міс.` : `${y} р.`;
+};
+
+// Map species name to illustration color
+export const petSpeciesColor = (species) => {
+  const k = String(species || '').toLowerCase();
+  if (k === 'кіт') return 'violet';
+  if (k === 'собака') return 'coral';
+  if (k === 'кролик') return 'teal';
+  if (k === 'птах') return 'amber';
+  if (k === 'тхір') return 'rose';
+  if (k === 'гризун') return 'green';
+  if (k === 'рептилія') return 'violet';
+  return 'teal';
+};
+
+// Map species name to illustration kind
+export const petSpeciesKind = (species) => {
+  const k = String(species || '').toLowerCase();
+  if (k === 'кіт') return 'cat';
+  if (k === 'собака') return 'dog';
+  if (k === 'кролик') return 'rabbit';
+  return 'cat';
+};
+
 // Geometric pet illustration placeholder
 export const PetIllustration = ({ kind = 'cat', color = 'teal', size = 120 }) => {
   const colors = {
