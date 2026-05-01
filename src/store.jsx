@@ -191,6 +191,8 @@ const upsert = (items, item) => {
   return items.map(x => x.id === item.id ? { ...x, ...item } : x);
 };
 
+let _accessToken = null;
+
 export const AppStoreProvider = ({ children }) => {
   const [state, setState] = useState(readInitialState);
 
@@ -203,8 +205,11 @@ export const AppStoreProvider = ({ children }) => {
   const actions = useMemo(() => ({
     acceptCookies: () => setState(s => ({ ...s, cookiesAccepted: true })),
     setCurrentUser: (user) => setState(s => ({ ...s, currentUser: user || null })),
+    setAccessToken: (token) => { _accessToken = token || null; },
+    getAccessToken: () => _accessToken,
     logout: () => {
       fetch('/api/auth/refresh', { method: 'DELETE', credentials: 'include' }).catch(() => {});
+      _accessToken = null;
       setState(s => ({ ...s, currentUser: null }));
     },
     addMessage: (payload) => setState(s => {

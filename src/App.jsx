@@ -1320,7 +1320,7 @@ export default function App() {
   uE(() => {
     fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.user) store.setCurrentUser(data.user); })
+      .then((data) => { if (data?.user) { store.setCurrentUser(data.user); store.setAccessToken(data.accessToken); } })
       .catch(() => {});
   }, []);
 
@@ -1656,6 +1656,7 @@ export default function App() {
           onClose={() => setShowLogin(false)}
           onSuccess={(user, isNew, accessToken) => {
             store.setCurrentUser(user);
+            store.setAccessToken(accessToken);
             setShowLogin(false);
             if (isNew) {
               setOnboarding({ user, accessToken });

@@ -728,227 +728,458 @@ export const ArticlePage = ({ go, params }) => {
 // =================================================================
 // PROFILE
 // =================================================================
-export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
-  const { currentUser, pets, appointments, messages, cancelAppointment, savePet, saveClient } = useStore();
-  const [tab, setTab] = uS2('upcoming');
-  const [petForm, setPetForm] = uS2(null);
-  const [profileForm, setProfileForm] = uS2(null);
-  const user = currentUser;
+const MONTHS_SHORT = ['СІЧ','ЛЮТ','БЕР','КВТ','ТРВ','ЧРВ','ЛИП','СРП','ВРС','ЖОВ','ЛСТ','ГРД'];
+const PET_COLORS = ['teal','coral','violet','amber','green'];
+const PET_KIND = s => s === 'Кіт' ? 'cat' : s === 'Собака' ? 'dog' : s === 'Кролик' ? 'rabbit' : 'cat';
 
-  uE2(() => {
-    if (!user) openLogin?.();
-  }, [user, openLogin]);
+const EmptyState = ({ icon, title, text, action, onAction }) => (
+  <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+    <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--teal-50)', color: 'var(--teal-500)', display: 'grid', placeItems: 'center', margin: '0 auto 16px' }}>
+      <Icon name={icon} size={26} />
+    </div>
+    <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{title}</div>
+    <div style={{ fontSize: 14, color: 'var(--ink-500)', marginBottom: 20, maxWidth: 260, margin: '0 auto 20px' }}>{text}</div>
+    {action && <button className="btn btn-primary btn-sm" onClick={onAction}>{action}</button>}
+  </div>
+);
+
+const PetFormModal = ({ form, onClose, onSave }) => (
+  <div className="backdrop" onClick={onClose}>
+    <div className="card pop" onClick={e => e.stopPropagation()} style={{ padding: 28, maxWidth: 480, width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>{form.id ? 'Редагувати тварину' : 'Нова тварина'}</h2>
+        <button className="btn btn-ghost btn-sm" onClick={onClose} style={{ padding: 8 }}><Icon name="x" size={16} /></button>
+      </div>
+      <div style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Кличка *</label>
+            <input className="input" placeholder="Барсік" value={form.name || ''} onChange={e => form._set('name', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Вид *</label>
+            <input className="input" placeholder="Кіт, Собака…" value={form.species || ''} onChange={e => form._set('species', e.target.value)} />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Порода</label>
+            <input className="input" placeholder="Мейн-кун" value={form.breed || ''} onChange={e => form._set('breed', e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Вік (р.)</label>
+            <input className="input" placeholder="2" inputMode="numeric" value={form.age || ''} onChange={e => form._set('age', e.target.value.replace(/\D/g, ''))} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Вага (кг)</label>
+            <input className="input" placeholder="4.5" inputMode="decimal" value={form.weight || ''} onChange={e => form._set('weight', e.target.value.replace(/[^\d.]/g, ''))} />
+          </div>
+        </div>
+        <div>
+          <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Попередження (через кому)</label>
+          <input className="input" placeholder="Алергія на пеніцилін" value={form.alertsText || ''} onChange={e => form._set('alertsText', e.target.value)} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>Скасувати</button>
+        <button className="btn btn-primary btn-sm" onClick={onSave}>Зберегти</button>
+      </div>
+    </div>
+  </div>
+);
+
+export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
+  const store = useStore();
+  const { currentUser: user, pets, appointments, messages, cancelAppointment, savePet, saveClient } = store;
+  const [tab, setTab] = uS2('upcoming');
+  const [petFormData, setPetFormData] = uS2(null);
+  const [editProfile, setEditProfile] = uS2(false);
+  const [profileDraft, setProfileDraft] = uS2({});
+  const [savingProfile, setSavingProfile] = uS2(false);
+
+  uE2(() => { if (!user) openLogin?.(); }, [user]);
 
   if (!user) {
     return (
       <div data-screen-label="Profile">
-        <section style={{padding:'72px 0 96px', background:'var(--teal-50)'}}>
-          <div className="container" style={{maxWidth:620}}>
-            <div className="card" style={{padding:32, textAlign:'center'}}>
-              <div style={{width:56, height:56, borderRadius:16, background:'var(--teal-100)', color:'var(--teal-700)', display:'grid', placeItems:'center', margin:'0 auto 16px'}}>
-                <Icon name="user" size={24}/>
-              </div>
-              <h1 style={{fontSize:30, marginBottom:10}}>Увійдіть, щоб переглянути кабінет</h1>
-              <p style={{color:'var(--ink-600)', marginBottom:20}}>Ваші записи, тварини та документи доступні після входу.</p>
-              <button className="btn btn-primary" onClick={() => openLogin?.()}>Увійти</button>
+        <div style={{ minHeight: '70vh', display: 'grid', placeItems: 'center', padding: '40px 16px' }}>
+          <div style={{ textAlign: 'center', maxWidth: 380 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--teal-100)', color: 'var(--teal-600)', display: 'grid', placeItems: 'center', margin: '0 auto 20px' }}>
+              <Icon name="user" size={30} />
             </div>
+            <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 10 }}>Увійдіть у кабінет</h1>
+            <p style={{ color: 'var(--ink-500)', marginBottom: 24, lineHeight: 1.6 }}>Ваші записи, тварини та документи доступні після входу.</p>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => openLogin?.()}>Увійти або зареєструватись</button>
           </div>
-        </section>
+        </div>
       </div>
     );
   }
 
   const myPets = pets.filter(p => p.owner === user?.name);
-  const myAppts = appointments.filter(a => a.client === user?.name);
+  const myAppts = appointments.filter(a => a.client === user?.name).sort((a, b) => b.date?.localeCompare(a.date));
+  const upcoming = myAppts.filter(a => !['Завершено','Скасовано'].includes(a.status));
+  const history = myAppts.filter(a => ['Завершено','Скасовано'].includes(a.status));
   const myMessages = messages.filter(m => !m.phone || m.phone === user?.phone);
-  const saveProfile = () => {
-    const result = saveClient(profileForm);
-    if (!result.ok) {
-      showToast?.(result.error);
-      return;
-    }
-    setProfileForm(null);
-    showToast?.('Профіль оновлено.');
+
+  const NAV = [
+    { k: 'upcoming', l: 'Записи', i: 'calendar', badge: upcoming.length || null },
+    { k: 'pets', l: 'Тварини', i: 'paw', badge: myPets.length || null },
+    { k: 'history', l: 'Історія', i: 'activity' },
+    { k: 'docs', l: 'Документи', i: 'book' },
+    { k: 'settings', l: 'Дані', i: 'settings' },
+  ];
+
+  const openPetForm = (init) => {
+    const data = { ...init };
+    data._set = (k, v) => setPetFormData(p => ({ ...p, [k]: v }));
+    setPetFormData(data);
   };
-  const savePetForm = () => {
-    const result = savePet({ ...petForm, owner:user?.name || '', age:Number(petForm.age || 0), weight:Number(petForm.weight || 0), alerts: String(petForm.alertsText || '').split(',').map(x=>x.trim()).filter(Boolean) });
-    if (!result.ok) {
-      showToast?.(result.error);
-      return;
-    }
-    setPetForm(null);
-    showToast?.('Картку тварини збережено.');
+
+  const submitPetForm = () => {
+    if (!petFormData) return;
+    const result = savePet({
+      ...petFormData,
+      owner: user?.name || '',
+      age: Number(petFormData.age || 0),
+      weight: Number(petFormData.weight || 0),
+      alerts: String(petFormData.alertsText || '').split(',').map(x => x.trim()).filter(Boolean),
+    });
+    if (!result.ok) { showToast?.(result.error); return; }
+    setPetFormData(null);
+    showToast?.('Тварину збережено');
   };
+
+  const startEditProfile = () => {
+    setProfileDraft({ name: user.name || '', phone: user.phone || '', email: user.email || '' });
+    setEditProfile(true);
+  };
+
+  const submitProfile = async () => {
+    if (!profileDraft.name?.trim()) { showToast?.('Введіть імʼя'); return; }
+    setSavingProfile(true);
+    try {
+      const token = store.getAccessToken?.();
+      const res = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify(profileDraft),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        store.setCurrentUser(data.user);
+        saveClient({ ...user, ...profileDraft });
+      }
+      setEditProfile(false);
+      showToast?.('Дані оновлено');
+    } catch { showToast?.('Помилка збереження'); }
+    setSavingProfile(false);
+  };
+
+  const memberSince = user.created_at ? new Date(user.created_at).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' }) : null;
+
   return (
     <div data-screen-label="Profile">
-      <section style={{padding:'40px 0 24px', background:'var(--teal-50)'}}>
-        <div className="container" style={{display:'flex', alignItems:'center', gap:18}}>
-          <Avatar name={user?.name || 'Клієнт'} size={64}/>
-          <div style={{flex:1}}>
-            <div className="chip chip-teal" style={{marginBottom:6}}>Кабінет клієнта</div>
-            <h1 style={{fontSize:36, letterSpacing:'-0.03em'}}>Вітаємо, {user?.name?.split(' ')[0] || 'клієнте'}!</h1>
+      {/* ── Hero ── */}
+      <div className="profile-hero">
+        <div className="container">
+          <div className="profile-hero-inner">
+            <Avatar name={user.name || 'К'} size={64} />
+            <div className="profile-hero-info">
+              <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{user.name}</div>
+              {memberSince && <div style={{ fontSize: 13, color: 'var(--teal-200)', marginTop: 3 }}>Клієнт з {memberSince}</div>}
+              <div className="profile-hero-stats">
+                <div className="profile-hero-stat"><span>{myPets.length}</span> тварин</div>
+                <div className="profile-hero-stat-div" />
+                <div className="profile-hero-stat"><span>{myAppts.length}</span> візитів</div>
+                {upcoming.length > 0 && <>
+                  <div className="profile-hero-stat-div" />
+                  <div className="profile-hero-stat"><span>{upcoming.length}</span> заплановано</div>
+                </>}
+              </div>
+            </div>
+            <button className="btn btn-primary profile-hero-cta" onClick={() => go('booking')}>
+              <Icon name="plus" size={15} color="#fff" /> Записатись
+            </button>
           </div>
-          <button className="btn btn-primary" onClick={()=>go('booking')}><Icon name="plus" size={14} color="#fff"/> Новий запис</button>
         </div>
-      </section>
+      </div>
 
-      <section style={{padding:'32px 0 96px'}}>
-        <div className="container" style={{display:'grid', gridTemplateColumns:'260px 1fr', gap:24}}>
-          <aside className="card" style={{padding:14, position:'sticky', top:96, height:'fit-content'}}>
-            {[
-              { k:'upcoming', l:'Записи', i:'calendar' },
-              { k:'pets', l:'Мої тварини', i:'paw' },
-              { k:'history', l:'Історія візитів', i:'file' },
-              { k:'docs', l:'Документи', i:'book' },
-              { k:'settings', l:'Налаштування', i:'settings' },
-            ].map(item => (
-              <button key={item.k} onClick={()=>setTab(item.k)} style={{width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, border:0, background: tab===item.k?'var(--teal-50)':'transparent', color: tab===item.k?'var(--teal-700)':'var(--ink-700)', fontWeight: tab===item.k?600:500, cursor:'pointer', fontSize:14, textAlign:'left'}}>
-                <Icon name={item.i} size={16}/> {item.l}
+      {/* ── Mobile tab nav ── */}
+      <div className="profile-tab-nav">
+        {NAV.map(item => (
+          <button key={item.k} className={`profile-tab-btn${tab === item.k ? ' active' : ''}`} onClick={() => setTab(item.k)}>
+            <Icon name={item.i} size={20} />
+            <span>{item.l}</span>
+            {item.badge ? <span className="profile-tab-badge">{item.badge}</span> : null}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Layout ── */}
+      <div className="container profile-section">
+        <div className="profile-layout">
+
+          {/* Desktop sidebar */}
+          <aside className="profile-sidebar card">
+            <div style={{ padding: '8px 8px 4px', fontSize: 11, fontWeight: 700, color: 'var(--ink-400)', letterSpacing: '.06em', textTransform: 'uppercase' }}>Кабінет</div>
+            {NAV.map(item => (
+              <button key={item.k} className={`profile-nav-btn${tab === item.k ? ' active' : ''}`} onClick={() => setTab(item.k)}>
+                <Icon name={item.i} size={15} />
+                <span style={{ flex: 1 }}>{item.l === 'Записи' ? 'Мої записи' : item.l === 'Тварини' ? 'Мої тварини' : item.l === 'Дані' ? 'Мої дані' : item.l}</span>
+                {item.badge ? <span className="profile-nav-badge">{item.badge}</span> : null}
               </button>
             ))}
+            <div className="profile-sidebar-div" />
+            <button className="profile-nav-btn profile-nav-logout" onClick={store.logout}>
+              <Icon name="logout" size={15} /> Вийти
+            </button>
           </aside>
 
-          <div>
+          {/* Content */}
+          <main className="profile-main">
+
+            {/* ── Upcoming ── */}
             {tab === 'upcoming' && (
               <div>
-                <h2 style={{fontSize:24, marginBottom:18}}>Найближчі записи</h2>
-                <div style={{display:'grid', gap:10}}>
-                  {myAppts.slice(0,3).map(ap => (
-                    <div key={ap.id} className="card" style={{padding:20, display:'grid', gridTemplateColumns:'auto 1fr auto auto', gap:18, alignItems:'center'}}>
-                      <div style={{width:56, height:56, borderRadius:14, background:'var(--teal-100)', color:'var(--teal-700)', display:'grid', placeItems:'center', textAlign:'center', fontFamily:'var(--font-display)'}}>
-                        <div>
-                          <div style={{fontSize:20, fontWeight:700, lineHeight:1}}>{ap.date.slice(8,10)}</div>
-                          <div style={{fontSize:10, fontWeight:600}}>{['СІЧ','ЛЮТ','БЕР','КВІТ','ТРАВ','ЧЕР','ЛИП','СЕР','ВЕР','ЖОВ','ЛИС','ГРУ'][parseInt(ap.date.slice(5,7),10)-1] || ''}</div>
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{fontWeight:600, fontSize:16}}>{ap.service}</div>
-                        <div style={{fontSize:13, color:'var(--ink-500)', marginTop:2}}>{ap.pet} · {ap.doctor} · {ap.time}</div>
-                      </div>
-                      <StatusPill status={ap.status}/>
-                      <button className="btn btn-sm btn-outline" onClick={()=>cancelAppointment(ap.id)}>Скасувати</button>
-                    </div>
-                  ))}
+                <div className="profile-content-header">
+                  <h2 className="profile-content-title">Записи</h2>
+                  <button className="btn btn-sm btn-primary" onClick={() => go('booking')}><Icon name="plus" size={13} color="#fff" /> Новий</button>
                 </div>
-                <h2 style={{fontSize:24, margin:'32px 0 18px'}}>Швидкі дії</h2>
-                <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12}}>
-                  <button className="card" style={{padding:20, border:0, textAlign:'left', cursor:'pointer'}} onClick={()=>go('booking')}>
-                    <div style={{width:40, height:40, borderRadius:10, background:'var(--teal-100)', color:'var(--teal-600)', display:'grid', placeItems:'center', marginBottom:12}}><Icon name="plus" size={18}/></div>
-                    <div style={{fontWeight:600}}>Новий запис</div><div style={{fontSize:13, color:'var(--ink-500)'}}>На прийом</div>
-                  </button>
-                  <button className="card" style={{padding:20, border:0, textAlign:'left', cursor:'pointer'}}>
-                    <div style={{width:40, height:40, borderRadius:10, background:'var(--coral-100)', color:'var(--coral-600)', display:'grid', placeItems:'center', marginBottom:12}}><Icon name="phone" size={18}/></div>
-                    <div style={{fontWeight:600}}>Зв'язатися з лікарем</div><div style={{fontSize:13, color:'var(--ink-500)'}}>Чат у застосунку</div>
-                  </button>
-                  <button className="card" style={{padding:20, border:0, textAlign:'left', cursor:'pointer'}}>
-                    <div style={{width:40, height:40, borderRadius:10, background:'var(--violet-100)', color:'var(--violet-500)', display:'grid', placeItems:'center', marginBottom:12}}><Icon name="file" size={18}/></div>
-                    <div style={{fontWeight:600}}>Замовити аналізи</div><div style={{fontSize:13, color:'var(--ink-500)'}}>З виїздом</div>
-                  </button>
+                {upcoming.length === 0 ? (
+                  <div className="card" style={{ overflow: 'hidden' }}>
+                    <EmptyState icon="calendar" title="Немає активних записів" text="Запишіть свого улюбленця на прийом до лікаря" action="Записатись" onAction={() => go('booking')} />
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {upcoming.map(ap => {
+                      const day = ap.date?.slice(8, 10);
+                      const mon = MONTHS_SHORT[parseInt(ap.date?.slice(5, 7), 10) - 1] || '';
+                      return (
+                        <div key={ap.id} className="card appt-card">
+                          <div className="appt-date-badge">
+                            <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1, fontFamily: 'var(--font-display)' }}>{day}</div>
+                            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.04em' }}>{mon}</div>
+                          </div>
+                          <div className="appt-info">
+                            <div style={{ fontWeight: 600, fontSize: 15 }}>{ap.service}</div>
+                            <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 3 }}>
+                              {[ap.pet, ap.doctor, ap.time].filter(Boolean).join(' · ')}
+                            </div>
+                          </div>
+                          <div className="appt-actions">
+                            <StatusPill status={ap.status} />
+                            <button className="btn btn-sm btn-outline" onClick={() => cancelAppointment(ap.id)}>Скасувати</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="profile-content-header" style={{ marginTop: 32 }}>
+                  <h2 className="profile-content-title">Швидкі дії</h2>
+                </div>
+                <div className="quick-actions">
+                  {[
+                    { icon: 'plus', bg: 'var(--teal-100)', c: 'var(--teal-600)', label: 'Новий запис', sub: 'На прийом', fn: () => go('booking') },
+                    { icon: 'phone', bg: 'var(--coral-100)', c: 'var(--coral-600)', label: 'Зателефонувати', sub: 'Пряма лінія' },
+                    { icon: 'paw', bg: 'var(--violet-100)', c: 'var(--violet-500)', label: 'Мої тварини', sub: 'Картки', fn: () => setTab('pets') },
+                  ].map(({ icon, bg, c, label, sub, fn }) => (
+                    <button key={label} className="card quick-action-btn" onClick={fn} disabled={!fn}>
+                      <div style={{ width: 42, height: 42, borderRadius: 12, background: bg, color: c, display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+                        <Icon name={icon} size={20} />
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>{sub}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
+            {/* ── Pets ── */}
             {tab === 'pets' && (
               <div>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18}}>
-                  <h2 style={{fontSize:24}}>Мої тварини</h2>
-                  <button className="btn btn-sm btn-outline" onClick={()=>setPetForm({ name:'', species:'Кіт', breed:'', age:1, weight:0, alertsText:'' })}><Icon name="plus" size={14}/> Додати</button>
+                <div className="profile-content-header">
+                  <h2 className="profile-content-title">Мої тварини</h2>
+                  <button className="btn btn-sm btn-outline" onClick={() => openPetForm({ name: '', species: '', breed: '', age: '', weight: '', alertsText: '' })}>
+                    <Icon name="plus" size={13} /> Додати
+                  </button>
                 </div>
-                <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14}}>
-                  {myPets.map((p, i) => (
-                    <div key={p.id} className="card" style={{padding:20, display:'flex', gap:16}}>
-                      <PetIllustration kind={p.species==='Кіт'?'cat':'dog'} color={i?'coral':'teal'} size={84}/>
-                      <div style={{flex:1}}>
-                        <div style={{fontFamily:'var(--font-display)', fontSize:20, fontWeight:600}}>{p.name}</div>
-                        <div style={{fontSize:13, color:'var(--ink-500)', marginBottom:10}}>{p.species} · {p.breed} · {p.age} роки</div>
-                        <div style={{display:'grid', gap:6, fontSize:13}}>
-                          <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'var(--ink-500)'}}>Вага</span><span style={{fontWeight:600}}>{p.weight} кг</span></div>
-                          <div style={{display:'flex', justifyContent:'space-between'}}><span style={{color:'var(--ink-500)'}}>Останній візит</span><span style={{fontWeight:600}}>{p.lastVisit}</span></div>
+                {myPets.length === 0 ? (
+                  <div className="card" style={{ overflow: 'hidden' }}>
+                    <EmptyState icon="paw" title="Тварин ще немає" text="Додайте свого улюбленця щоб зберігати його медичну картку" action="Додати тварину" onAction={() => openPetForm({ name: '', species: '', breed: '', age: '', weight: '', alertsText: '' })} />
+                  </div>
+                ) : (
+                  <div className="pet-grid">
+                    {myPets.map((p, i) => (
+                      <div key={p.id || i} className="card pet-card">
+                        <div className="pet-card-visual">
+                          <PetIllustration kind={PET_KIND(p.species)} color={PET_COLORS[i % PET_COLORS.length]} size={80} />
                         </div>
-                        {p.alerts.length>0 && <div className="chip chip-amber" style={{marginTop:10, fontSize:11}}>{p.alerts[0]}</div>}
-                        <button className="btn btn-sm btn-outline" onClick={()=>setPetForm({ ...p, alertsText:p.alerts?.join(', ') || '' })} style={{marginTop:10}}>Редагувати</button>
+                        <div className="pet-card-body">
+                          <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700 }}>{p.name}</div>
+                          <div style={{ fontSize: 13, color: 'var(--ink-500)', margin: '2px 0 10px' }}>
+                            {[p.species, p.breed, p.age ? `${p.age} р.` : null].filter(Boolean).join(' · ')}
+                          </div>
+                          <div className="pet-card-stats">
+                            {p.weight ? <div className="pet-stat"><span style={{ color: 'var(--ink-400)' }}>Вага</span><strong>{p.weight} кг</strong></div> : null}
+                            {p.lastVisit ? <div className="pet-stat"><span style={{ color: 'var(--ink-400)' }}>Візит</span><strong>{p.lastVisit}</strong></div> : null}
+                          </div>
+                          {p.alerts?.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+                              {p.alerts.slice(0, 2).map(a => <span key={a} className="chip chip-amber" style={{ fontSize: 11 }}>{a}</span>)}
+                            </div>
+                          )}
+                          <button className="btn btn-sm btn-outline" style={{ marginTop: 12, alignSelf: 'flex-start' }}
+                            onClick={() => openPetForm({ ...p, alertsText: p.alerts?.join(', ') || '' })}>
+                            <Icon name="edit" size={13} /> Редагувати
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
+            {/* ── History ── */}
             {tab === 'history' && (
               <div>
-                <h2 style={{fontSize:24, marginBottom:18}}>Історія візитів</h2>
-                <div className="card" style={{padding:0}}>
-                  {myAppts.map((ap, i) => (
-                    <div key={ap.id} style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', gap:14, padding:'16px 22px', alignItems:'center', borderTop: i?'1px solid var(--ink-100)':0}}>
-                      <div><div style={{fontWeight:600, fontSize:14}}>{ap.service}</div><div style={{fontSize:12, color:'var(--ink-500)'}}>{ap.pet}</div></div>
-                      <div style={{fontSize:13, color:'var(--ink-600)'}}>{ap.doctor}</div>
-                      <div style={{fontSize:13, color:'var(--ink-600)'}}>{ap.date} · {ap.time}</div>
-                      <StatusPill status={ap.status}/>
-                      <div style={{fontFamily:'var(--font-display)', fontWeight:700}}>{ap.price} ₴</div>
-                    </div>
-                  ))}
-                </div>
+                <h2 className="profile-content-title" style={{ marginBottom: 16 }}>Історія візитів</h2>
+                {history.length === 0 ? (
+                  <div className="card" style={{ overflow: 'hidden' }}>
+                    <EmptyState icon="activity" title="Візитів ще не було" text="Тут зберігатиметься ваша медична історія" />
+                  </div>
+                ) : (
+                  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                    {history.map((ap, i) => (
+                      <div key={ap.id} className="history-row" style={{ borderTop: i ? '1px solid var(--ink-100)' : 0 }}>
+                        <div className="history-main">
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{ap.service}</div>
+                          <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>{ap.pet} · {ap.doctor}</div>
+                        </div>
+                        <div className="history-date" style={{ fontSize: 13, color: 'var(--ink-600)' }}>{ap.date}</div>
+                        <StatusPill status={ap.status} />
+                        {ap.price ? <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textAlign: 'right' }}>{ap.price} ₴</div> : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
+            {/* ── Docs ── */}
             {tab === 'docs' && (
               <div>
-                <h2 style={{fontSize:24, marginBottom:18}}>Документи</h2>
-                <div className="card" style={{padding:0}}>
-                  {[...myAppts.slice(0,4).map(ap => ({id:`ap-${ap.id}`, title:`Виписка: ${ap.service}`, meta:`${ap.pet} · ${ap.date}`, icon:'file'})), ...myMessages.slice(0,3).map(m => ({id:`m-${m.id}`, title:'Звернення до клініки', meta:m.createdAt?.slice(0,10) || 'сьогодні', icon:'mail'}))].map((doc,i)=>(
-                    <div key={doc.id} style={{display:'grid', gridTemplateColumns:'auto 1fr auto', gap:14, padding:'16px 22px', alignItems:'center', borderTop:i?'1px solid var(--ink-100)':0}}>
-                      <div style={{width:38, height:38, borderRadius:10, background:'var(--teal-50)', color:'var(--teal-700)', display:'grid', placeItems:'center'}}><Icon name={doc.icon} size={16}/></div>
-                      <div><div style={{fontWeight:600, fontSize:14}}>{doc.title}</div><div style={{fontSize:12, color:'var(--ink-500)'}}>{doc.meta}</div></div>
-                      <button className="btn btn-sm btn-outline">Переглянути</button>
+                <h2 className="profile-content-title" style={{ marginBottom: 16 }}>Документи</h2>
+                {(() => {
+                  const docs = [
+                    ...myAppts.slice(0, 5).map(ap => ({ id: `ap-${ap.id}`, title: `Виписка: ${ap.service}`, meta: `${ap.pet} · ${ap.date}`, icon: 'file' })),
+                    ...myMessages.slice(0, 3).map(m => ({ id: `m-${m.id}`, title: 'Звернення до клініки', meta: m.createdAt?.slice(0, 10) || 'сьогодні', icon: 'mail' })),
+                  ];
+                  if (!docs.length) return (
+                    <div className="card" style={{ overflow: 'hidden' }}>
+                      <EmptyState icon="book" title="Документів ще немає" text="Виписки та результати аналізів зберігатимуться тут" />
                     </div>
-                  ))}
-                </div>
+                  );
+                  return (
+                    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                      {docs.map((doc, i) => (
+                        <div key={doc.id} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 14, padding: '14px 20px', alignItems: 'center', borderTop: i ? '1px solid var(--ink-100)' : 0 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 11, background: 'var(--teal-50)', color: 'var(--teal-700)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                            <Icon name={doc.icon} size={17} />
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>{doc.title}</div>
+                            <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>{doc.meta}</div>
+                          </div>
+                          <button className="btn btn-sm btn-outline">Переглянути</button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
+            {/* ── Settings ── */}
             {tab === 'settings' && (
               <div>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18}}>
-                  <h2 style={{fontSize:24}}>Налаштування</h2>
-                  <button className="btn btn-sm btn-outline" onClick={()=>setProfileForm(user)}>Редагувати профіль</button>
+                <div className="profile-content-header">
+                  <h2 className="profile-content-title">Мої дані</h2>
+                  {!editProfile && <button className="btn btn-sm btn-outline" onClick={startEditProfile}><Icon name="edit" size={13} /> Редагувати</button>}
                 </div>
-                <div className="card" style={{padding:24, display:'grid', gap:12, maxWidth:560}}>
-                  {[['Імʼя', user?.name], ['Телефон', user?.phone], ['Email', user?.email], ['Статус', user?.status]].map(([label, value])=>(
-                    <div key={label} style={{display:'flex', justifyContent:'space-between', fontSize:14, borderBottom:'1px solid var(--ink-100)', paddingBottom:10}}>
-                      <span style={{color:'var(--ink-500)'}}>{label}</span><span style={{fontWeight:600}}>{value || '—'}</span>
+
+                {editProfile ? (
+                  <div className="card" style={{ padding: 24 }}>
+                    <div style={{ display: 'grid', gap: 14 }}>
+                      <div>
+                        <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Імʼя та прізвище</label>
+                        <input className="input" value={profileDraft.name || ''} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} placeholder="Іван Коваленко" autoComplete="name" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Телефон</label>
+                        <input className="input" value={profileDraft.phone || ''} onChange={e => setProfileDraft(d => ({ ...d, phone: e.target.value }))} placeholder="+380 XX XXX XX XX" inputMode="tel" autoComplete="tel" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Email</label>
+                        <input className="input" value={profileDraft.email || ''} onChange={e => setProfileDraft(d => ({ ...d, email: e.target.value }))} placeholder="your@email.com" inputMode="email" autoComplete="email" />
+                      </div>
                     </div>
-                  ))}
+                    <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setEditProfile(false)} disabled={savingProfile}>Скасувати</button>
+                      <button className="btn btn-primary btn-sm" onClick={submitProfile} disabled={savingProfile}>
+                        {savingProfile ? 'Зберігаємо…' : 'Зберегти'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                    {[
+                      { icon: 'user', label: 'Імʼя', value: user.name },
+                      { icon: 'phone', label: 'Телефон', value: user.phone },
+                      { icon: 'mail', label: 'Email', value: user.email },
+                    ].map(({ icon, label, value }, i) => (
+                      <div key={label} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 14, padding: '16px 20px', alignItems: 'center', borderTop: i ? '1px solid var(--ink-100)' : 0 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--ink-50)', color: 'var(--ink-500)', display: 'grid', placeItems: 'center' }}>
+                          <Icon name={icon} size={16} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--ink-400)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 2 }}>{label}</div>
+                          <div style={{ fontWeight: 600, fontSize: 15 }}>{value || <span style={{ color: 'var(--ink-300)', fontWeight: 400 }}>Не вказано</span>}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="profile-content-header" style={{ marginTop: 28 }}>
+                  <h2 className="profile-content-title">Акаунт</h2>
+                </div>
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <button className="profile-danger-row" onClick={store.logout}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--coral-100)', color: 'var(--coral-600)', display: 'grid', placeItems: 'center' }}>
+                      <Icon name="logout" size={16} />
+                    </div>
+                    <span style={{ fontWeight: 500 }}>Вийти з акаунту</span>
+                    <Icon name="chevRight" size={16} color="var(--ink-400)" />
+                  </button>
                 </div>
               </div>
             )}
-          </div>
+          </main>
         </div>
-      </section>
-      {petForm && (
-        <div className="backdrop" onClick={()=>setPetForm(null)}>
-          <div className="card" onClick={e=>e.stopPropagation()} style={{padding:24, maxWidth:480, width:'100%'}}>
-            <h2 style={{fontSize:22, marginBottom:16}}>{petForm.id ? 'Редагувати тварину' : 'Додати тварину'}</h2>
-            <div style={{display:'grid', gap:12}}>
-              {[
-                ['name','Кличка'], ['species','Вид'], ['breed','Порода'], ['age','Вік'], ['weight','Вага'], ['alertsText','Попередження через кому']
-              ].map(([k,l])=><input key={k} className="input" placeholder={l} value={petForm[k] || ''} onChange={e=>setPetForm(f=>({...f,[k]:e.target.value}))}/>)}
-            </div>
-            <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:18}}><button className="btn btn-ghost btn-sm" onClick={()=>setPetForm(null)}>Скасувати</button><button className="btn btn-primary btn-sm" onClick={savePetForm}>Зберегти</button></div>
-          </div>
-        </div>
-      )}
-      {profileForm && (
-        <div className="backdrop" onClick={()=>setProfileForm(null)}>
-          <div className="card" onClick={e=>e.stopPropagation()} style={{padding:24, maxWidth:460, width:'100%'}}>
-            <h2 style={{fontSize:22, marginBottom:16}}>Профіль</h2>
-            <div style={{display:'grid', gap:12}}>
-              {[
-                ['name','Імʼя'], ['phone','Телефон'], ['email','Email']
-              ].map(([k,l])=><input key={k} className="input" placeholder={l} value={profileForm[k] || ''} onChange={e=>setProfileForm(f=>({...f,[k]:e.target.value}))}/>)}
-            </div>
-            <div style={{display:'flex', justifyContent:'flex-end', gap:10, marginTop:18}}><button className="btn btn-ghost btn-sm" onClick={()=>setProfileForm(null)}>Скасувати</button><button className="btn btn-primary btn-sm" onClick={saveProfile}>Зберегти</button></div>
-          </div>
-        </div>
+      </div>
+
+      {petFormData && (
+        <PetFormModal
+          form={petFormData}
+          onClose={() => setPetFormData(null)}
+          onSave={submitPetForm}
+        />
       )}
     </div>
   );
