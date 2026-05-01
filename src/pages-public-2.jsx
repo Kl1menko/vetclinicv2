@@ -915,7 +915,7 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
     };
     const token = store.getAccessToken?.();
     if (token) {
-      const url = payload.id ? `/api/pets/${payload.id}` : '/api/pets';
+      const url = payload.id ? `/api/pets?id=${encodeURIComponent(payload.id)}` : '/api/pets';
       const method = payload.id ? 'PATCH' : 'POST';
       fetch(url, {
         method,

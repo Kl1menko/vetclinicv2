@@ -1,6 +1,6 @@
-import { getDb } from '../../../lib/db.js';
-import { verifyAccess } from '../../../lib/jwt.js';
-import { cors, err, readBody } from '../../../lib/cors.js';
+import { getDb } from '../lib/db.js';
+import { verifyAccess } from '../lib/jwt.js';
+import { cors, err, readBody } from '../lib/cors.js';
 
 const clean = (v) => String(v || '').trim();
 const asNumber = (v, fallback = 0) => {
@@ -31,6 +31,7 @@ export default async function handler(req, res) {
   if (!payload?.sub) return;
 
   const db = getDb();
+  const petId = clean(req.query?.id);
 
   if (req.method === 'GET') {
     const { data, error } = await db
@@ -68,9 +69,49 @@ export default async function handler(req, res) {
       .insert(payloadRow)
       .select('id, owner_user_id, name, species, breed, birth_date, age, weight, alerts, last_visit, sterilized, created_at, updated_at')
       .single();
-
     if (error) return err(res, 500, 'Не вдалося зберегти тварину');
     return res.status(200).json({ pet: data });
+  }
+
+  if (req.method === 'PATCH') {
+    if (!petId) return err(res, 400, 'Pet id is required');
+    let body;
+    try { body = await readBody(req); }
+    catch { return err(res, 400, 'Invalid JSON'); }
+
+    const patch = {};
+    if (body.name !== undefined) patch.name = clean(body.name);
+    if (body.species !== undefined) patch.species = clean(body.species) || null;
+    if (body.breed !== undefined) patch.breed = clean(body.breed) || null;
+    if (body.birthDate !== undefined) patch.birth_date = clean(body.birthDate) || null;
+    if (body.age !== undefined) patch.age = asNumber(body.age, 0);
+    if (body.weight !== undefined) patch.weight = asNumber(body.weight, 0);
+    if (body.alerts !== undefined) patch.alerts = Array.isArray(body.alerts) ? body.alerts.map(clean).filter(Boolean) : [];
+    if (body.lastVisit !== undefined) patch.last_visit = clean(body.lastVisit) || null;
+    if (body.sterilized !== undefined) patch.sterilized = Boolean(body.sterilized);
+    if (Object.keys(patch).length === 0) return err(res, 400, 'Нічого оновлювати');
+    if (patch.name !== undefined && !patch.name) return err(res, 400, 'Вкажіть кличку тварини.');
+
+    const { data, error } = await db
+      .from('pets')
+      .update(patch)
+      .eq('id', petId)
+      .eq('owner_user_id', payload.sub)
+      .select('id, owner_user_id, name, species, breed, birth_date, age, weight, alerts, last_visit, sterilized, created_at, updated_at')
+      .single();
+    if (error) return err(res, 500, 'Не вдалося оновити тварину');
+    return res.status(200).json({ pet: data });
+  }
+
+  if (req.method === 'DELETE') {
+    if (!petId) return err(res, 400, 'Pet id is required');
+    const { error } = await db
+      .from('pets')
+      .delete()
+      .eq('id', petId)
+      .eq('owner_user_id', payload.sub);
+    if (error) return err(res, 500, 'Не вдалося видалити тварину');
+    return res.status(204).end();
   }
 
   return err(res, 405, 'Method not allowed');

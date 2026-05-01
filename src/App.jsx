@@ -1648,7 +1648,7 @@ export default function App() {
         <Header
           go={go}
           current={route}
-          openBooking={() => setShowBooking(true)}
+          openBooking={() => go("booking")}
           openLogin={() => setShowLogin(true)}
           currentUser={store.currentUser}
           logout={() => {
@@ -1657,7 +1657,7 @@ export default function App() {
           }}
         />
         {publicPages[route] || (
-          <HomePage go={go} openBooking={() => setShowBooking(true)} />
+          <HomePage go={go} openBooking={() => go("booking")} />
         )}
         <Footer
           go={go}
