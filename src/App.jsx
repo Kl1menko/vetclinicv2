@@ -772,45 +772,32 @@ const LoginModal = ({ onClose, onSuccess }) => {
   const [method, setMethod] = uS("email");
   const [emailTab, setEmailTab] = uS("login");
   const [form, setForm] = uS({ name: "", email: "", phone: "", password: "" });
+  const [tgCode, setTgCode] = uS("");
   const [viberCode, setViberCode] = uS("");
   const [error, setError] = uS("");
   const [loading, setLoading] = uS(false);
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Telegram widget
-  uE(() => {
-    if (method !== "telegram" || !TG_BOT) return;
-    window.__tgAuthCallback = async (tgUser) => {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await fetch("/api/auth/telegram", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(tgUser),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Помилка авторизації");
-        onSuccess(data.user);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    const container = document.getElementById("tg-widget");
-    if (!container || container.querySelector("script")) return;
-    const script = document.createElement("script");
-    script.src = "https://telegram.org/js/telegram-widget.js?22";
-    script.setAttribute("data-telegram-login", TG_BOT);
-    script.setAttribute("data-size", "large");
-    script.setAttribute("data-onauth", "__tgAuthCallback(user)");
-    script.setAttribute("data-request-access", "write");
-    script.async = true;
-    container.appendChild(script);
-    return () => { container.innerHTML = ""; delete window.__tgAuthCallback; };
-  }, [method]);
+  const submitTelegram = async () => {
+    setError("");
+    if (!tgCode.trim()) return setError("Введіть код з бота");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/telegram-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: tgCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Невірний код");
+      onSuccess(data.user);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submitEmail = async () => {
     setError("");
@@ -912,20 +899,37 @@ const LoginModal = ({ onClose, onSuccess }) => {
         )}
 
         {method === "telegram" && (
-          <div style={{ display: "grid", gap: 16, textAlign: "center" }}>
+          <div style={{ display: "grid", gap: 16 }}>
             <h2 style={{ fontSize: 22 }}>Вхід через Telegram</h2>
-            {TG_BOT ? (
-              <>
-                <p style={{ color: "var(--ink-500)", fontSize: 14 }}>Натисніть кнопку нижче, щоб підтвердити вхід через Telegram.</p>
-                <div id="tg-widget" style={{ display: "flex", justifyContent: "center", minHeight: 48 }} />
-                {error && <div className="field-error">{error}</div>}
-                {loading && <div style={{ color: "var(--ink-400)", fontSize: 14 }}>Авторизація…</div>}
-              </>
-            ) : (
-              <div style={{ color: "var(--ink-400)", fontSize: 14, padding: "24px 0" }}>
-                Telegram авторизацію не налаштовано.<br />Додайте <code>VITE_TG_BOT_USERNAME</code> у змінні середовища.
+            <div style={{ background: "var(--ink-50)", borderRadius: 10, padding: 16, fontSize: 14, color: "var(--ink-600)", lineHeight: 1.6 }}>
+              <strong>Крок 1:</strong> Відкрийте бота і надішліть <code>/start</code>
+              <div style={{ marginTop: 10 }}>
+                <a
+                  href={`https://t.me/${TG_BOT}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-primary btn-sm"
+                  style={{ display: "inline-flex", textDecoration: "none" }}
+                >
+                  Відкрити @{TG_BOT || "ultravet_bot"} у Telegram
+                </a>
               </div>
-            )}
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ fontSize: 13, color: "var(--ink-500)" }}>Крок 2: введіть 6-значний код від бота</label>
+              <input
+                className="input"
+                placeholder="123456"
+                inputMode="numeric"
+                maxLength={6}
+                value={tgCode}
+                onChange={(e) => setTgCode(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+            {error && <div className="field-error">{error}</div>}
+            <button className="btn btn-primary" onClick={submitTelegram} disabled={loading || tgCode.length < 6}>
+              {loading ? "Перевірка…" : "Підтвердити"}
+            </button>
           </div>
         )}
 

@@ -38,17 +38,24 @@ CREATE INDEX IF NOT EXISTS refresh_tokens_hash_idx ON refresh_tokens (token_hash
 -- Auto-clean expired tokens (run as cron or manually)
 -- DELETE FROM refresh_tokens WHERE expires_at < now();
 
--- ─── Viber OTP Codes ─────────────────────────────────────────────────────────
+-- ─── OTP Codes (Telegram + Viber) ────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS otp_codes (
-  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  viber_id    TEXT        NOT NULL,
-  code_hash   TEXT        NOT NULL,
-  expires_at  TIMESTAMPTZ NOT NULL,
-  attempts    INT         NOT NULL DEFAULT 0,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  telegram_id  TEXT,
+  viber_id     TEXT,
+  code_hash    TEXT        NOT NULL,
+  expires_at   TIMESTAMPTZ NOT NULL,
+  attempts     INT         NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT otp_has_channel CHECK (telegram_id IS NOT NULL OR viber_id IS NOT NULL)
 );
 
-CREATE INDEX IF NOT EXISTS otp_codes_viber_idx ON otp_codes (viber_id);
+CREATE INDEX IF NOT EXISTS otp_codes_telegram_idx ON otp_codes (telegram_id);
+CREATE INDEX IF NOT EXISTS otp_codes_viber_idx    ON otp_codes (viber_id);
+
+-- Migration (run if table already exists):
+-- ALTER TABLE otp_codes ADD COLUMN IF NOT EXISTS telegram_id TEXT;
+-- ALTER TABLE otp_codes ALTER COLUMN viber_id DROP NOT NULL;
 
 -- ─── Row Level Security (optional, since we use service key) ─────────────────
 -- Enable RLS to block direct client access (we always use service_role key server-side)
