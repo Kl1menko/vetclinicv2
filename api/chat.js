@@ -2,10 +2,12 @@ import path from 'path';
 import { cors, err, readBody } from '../lib/cors.js';
 import { getDb } from '../lib/db.js';
 import { requireAuth, isConversationParticipant } from '../lib/auth.js';
+import { DOCTORS } from '../src/data.js';
 
 const staffRoles = new Set(['doctor', 'receptionist', 'admin']);
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 const CHAT_BUCKET = process.env.SUPABASE_CHAT_BUCKET || 'chat-files';
+const slug = (value = '') => String(value).toLowerCase().replace(/['’"`]/g, '').replace(/\s+/g, '-').replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
 const normalizeAttachments = (items = []) => {
   if (!Array.isArray(items)) return [];
@@ -131,8 +133,41 @@ export default async function handler(req, res) {
     let query = db.from('users').select('id, name, role, email, phone').neq('id', user.id).limit(limit);
     if (user.role === 'client') query = query.in('role', ['doctor', 'receptionist', 'admin']);
     if (q) query = query.or(`name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`);
-    const { data, error } = await query.order('name', { ascending: true });
+    let { data, error } = await query.order('name', { ascending: true });
     if (error) return err(res, 500, 'Не вдалося завантажити список користувачів');
+
+    // Bootstrap staff directory for chat when DB has no doctors/reception.
+    if (user.role === 'client' && (!data || data.length === 0)) {
+      const staffSeed = [
+        { name: 'Реєстратура UltraVet', role: 'receptionist', email: 'reception@ultravet.local' },
+        ...DOCTORS.map((d) => ({ name: d.name, role: 'doctor', email: `doctor-${slug(d.name)}@ultravet.local` })),
+      ];
+
+      const { error: seedErr } = await db
+        .from('users')
+        .upsert(
+          staffSeed.map((s) => ({
+            name: s.name,
+            role: s.role,
+            email: s.email,
+            phone: null,
+            password_hash: null,
+          })),
+          { onConflict: 'email', ignoreDuplicates: false },
+        );
+
+      if (!seedErr) {
+        const seeded = await db
+          .from('users')
+          .select('id, name, role, email, phone')
+          .in('role', ['doctor', 'receptionist', 'admin'])
+          .neq('id', user.id)
+          .order('name', { ascending: true })
+          .limit(limit);
+        if (!seeded.error) data = seeded.data || data;
+      }
+    }
+
     return res.status(200).json({ users: data || [] });
   }
 

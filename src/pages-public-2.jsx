@@ -767,11 +767,9 @@ const PetFormModal = ({ form, onClose, onSave }) => (
             <input className="input" placeholder="Мейн-кун" value={form.breed || ''} onChange={e => form._set('breed', e.target.value)} />
           </div>
           <div>
-            <div className="pet-birth-head" style={{ marginBottom: 6 }}>
-              <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block' }}>Дата народження</label>
-              {form.birthDate && <span className="chip chip-violet pet-age-chip">Вік: {calcPetAge(form.birthDate)}</span>}
-            </div>
+            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Дата народження</label>
             <input className="input" type="date" max={new Date().toISOString().slice(0,10)} value={form.birthDate || ''} onChange={e => form._set('birthDate', e.target.value)} />
+            {form.birthDate && <span className="chip chip-violet pet-age-chip" style={{ marginTop: 8, display: 'inline-flex' }}>Вік: {calcPetAge(form.birthDate)}</span>}
           </div>
           <div>
             <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>Вага (кг)</label>
