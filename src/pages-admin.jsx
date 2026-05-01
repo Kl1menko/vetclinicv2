@@ -741,7 +741,7 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
   const [search, setSearch] = uA('');
   const [showAdvancedFilters, setShowAdvancedFilters] = uA(false);
   const [advanced, setAdvanced] = uA({ doctor:'all', service:'all', payment:'all', from:'', to:'' });
-  const empty = { client:'', pet:'', petType:'Кіт', serviceName:'Консультація', doctorName:'—', date:new Date().toISOString().slice(0,10), time:'09:00', status:'waiting', price:600, paymentStatus:'unpaid', paymentMethod:'', diagnosis:'', treatment:'', medications:'', prescription:'', attachments:[] };
+  const empty = { client:'', pet:'', petType:'Кіт', serviceName:'Консультація', doctorName:'—', date:new Date().toISOString().slice(0,10), time:'09:00', status:'waiting', price:600, paymentStatus:'unpaid', paymentMethod:'', diagnosis:'', clinicalFindings:'', treatment:'', medications:'', medicationSchedule:'', testsOrdered:'', followUpDate:'', followUpPlan:'', dischargeSummary:'', prescription:'', attachments:[] };
   const [form, setForm] = uA(null);
   const [formMode, setFormMode] = uA('full');
   const clientOptions = uMA(() => Array.from(new Set(clients.map(c => c.name))), [clients]);
@@ -928,8 +928,14 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
                         serviceName: ap.service,
                         doctorName: ap.doctor,
                         diagnosis: ap.diagnosis || '',
+                        clinicalFindings: ap.clinicalFindings || '',
                         treatment: ap.treatment || '',
                         medications: ap.medications || '',
+                        medicationSchedule: ap.medicationSchedule || '',
+                        testsOrdered: ap.testsOrdered || '',
+                        followUpDate: ap.followUpDate || '',
+                        followUpPlan: ap.followUpPlan || '',
+                        dischargeSummary: ap.dischargeSummary || '',
                         prescription: ap.prescription || '',
                         attachments: Array.isArray(ap.attachments) ? ap.attachments : [],
                       });
@@ -973,10 +979,16 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
           {value:'cancelled', label:'Скасовано'},
         ]},
         {key:'diagnosis', label:'Діагноз', type:'textarea'},
+        {key:'clinicalFindings', label:'Клінічний стан / огляд', type:'textarea'},
         {key:'treatment', label:'План лікування', type:'textarea'},
-        {key:'medications', label:'Призначення (ліки/дозування/курс)', type:'textarea'},
+        {key:'medications', label:'Призначені препарати', type:'textarea'},
+        {key:'medicationSchedule', label:'Дозування та графік прийому', type:'textarea'},
+        {key:'testsOrdered', label:'Обстеження / аналізи (в т.ч. МРТ)', type:'textarea'},
+        {key:'followUpDate', label:'Контрольний візит', type:'date'},
+        {key:'followUpPlan', label:'План до контрольного візиту', type:'textarea'},
+        {key:'dischargeSummary', label:'Виписка для власника', type:'textarea'},
         {key:'prescription', label:'Текст рецепта', type:'textarea'},
-        {key:'attachments', label:'Документи (PDF/фото)', type:'file', accept:'.pdf,image/*', multiple:true},
+        {key:'attachments', label:'Документи (PDF/фото/МРТ)', type:'file', accept:'.pdf,image/*,.dcm,.dicom,.nii,.nii.gz,.zip', multiple:true},
       ] : [
         {key:'client', label:'Клієнт', type:'datalist', options:clientOptions, placeholder:'Почніть вводити імʼя'},
         {key:'pet', label:'Тварина', type:'datalist', options:petOptions, placeholder:form?.client ? 'Тварини власника' : 'Оберіть зі списку'},
@@ -1101,8 +1113,14 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
       doctor: a.doctor,
       notes: a.notes || 'Завершений прийом.',
       diagnosis: a.diagnosis || '',
+      clinicalFindings: a.clinicalFindings || '',
       treatment: a.treatment || '',
       medications: a.medications || '',
+      medicationSchedule: a.medicationSchedule || '',
+      testsOrdered: a.testsOrdered || '',
+      followUpDate: a.followUpDate || '',
+      followUpPlan: a.followUpPlan || '',
+      dischargeSummary: a.dischargeSummary || '',
       prescription: a.prescription || '',
       attachments: Array.isArray(a.attachments) ? a.attachments : [],
     })),
@@ -1210,8 +1228,14 @@ export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () =
                   <div style={{color:'#fff', fontSize:14, fontWeight:600, marginBottom:4}}>{e.title}</div>
                   <div style={{color:'#cfdcdb', fontSize:13}}>{e.notes}</div>
                   {e.diagnosis && <div style={{color:'#9fb3b1', fontSize:12, marginTop:6}}><strong>Діагноз:</strong> {e.diagnosis}</div>}
+                  {e.clinicalFindings && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Огляд:</strong> {e.clinicalFindings}</div>}
                   {e.treatment && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Лікування:</strong> {e.treatment}</div>}
                   {e.medications && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Призначення:</strong> {e.medications}</div>}
+                  {e.medicationSchedule && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Дозування:</strong> {e.medicationSchedule}</div>}
+                  {e.testsOrdered && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Обстеження:</strong> {e.testsOrdered}</div>}
+                  {e.followUpDate && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Контроль:</strong> {e.followUpDate}</div>}
+                  {e.followUpPlan && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>План до контролю:</strong> {e.followUpPlan}</div>}
+                  {e.dischargeSummary && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Виписка:</strong> {e.dischargeSummary}</div>}
                   {Array.isArray(e.attachments) && e.attachments.length > 0 && (
                     <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:8}}>
                       {e.attachments.map((att, ai) => (

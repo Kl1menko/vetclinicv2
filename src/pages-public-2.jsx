@@ -1186,14 +1186,38 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
                 ) : (
                   <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     {history.map((ap, i) => (
-                      <div key={ap.id} className="history-row" style={{ borderTop: i ? '1px solid var(--ink-100)' : 0 }}>
-                        <div className="history-main">
-                          <div style={{ fontWeight: 600, fontSize: 14 }}>{ap.service}</div>
-                          <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>{ap.pet} · {ap.doctor}</div>
+                      <div key={ap.id} style={{ borderTop: i ? '1px solid var(--ink-100)' : 0, padding: '14px 18px' }}>
+                        <div className="history-row" style={{ borderTop: 0, padding: 0 }}>
+                          <div className="history-main">
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>{ap.service}</div>
+                            <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 2 }}>{ap.pet} · {ap.doctor}</div>
+                          </div>
+                          <div className="history-date" style={{ fontSize: 13, color: 'var(--ink-600)' }}>{ap.date}</div>
+                          <StatusPill status={ap.status} />
+                          {ap.price ? <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textAlign: 'right' }}>{ap.price} ₴</div> : null}
                         </div>
-                        <div className="history-date" style={{ fontSize: 13, color: 'var(--ink-600)' }}>{ap.date}</div>
-                        <StatusPill status={ap.status} />
-                        {ap.price ? <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textAlign: 'right' }}>{ap.price} ₴</div> : null}
+                        {ap.status === 'completed' && (
+                          <div style={{ marginTop: 10, padding: '10px 12px', background: 'var(--ink-50)', borderRadius: 10, display: 'grid', gap: 6 }}>
+                            {ap.diagnosis && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Діагноз:</strong> {ap.diagnosis}</div>}
+                            {ap.clinicalFindings && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Огляд:</strong> {ap.clinicalFindings}</div>}
+                            {ap.treatment && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Лікування:</strong> {ap.treatment}</div>}
+                            {ap.medications && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Препарати:</strong> {ap.medications}</div>}
+                            {ap.medicationSchedule && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Дозування:</strong> {ap.medicationSchedule}</div>}
+                            {ap.testsOrdered && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Обстеження:</strong> {ap.testsOrdered}</div>}
+                            {ap.followUpDate && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Контрольний візит:</strong> {ap.followUpDate}</div>}
+                            {ap.followUpPlan && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>План до контролю:</strong> {ap.followUpPlan}</div>}
+                            {ap.dischargeSummary && <div style={{ fontSize: 12, color: 'var(--ink-700)' }}><strong>Виписка:</strong> {ap.dischargeSummary}</div>}
+                            {Array.isArray(ap.attachments) && ap.attachments.length > 0 && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+                                {ap.attachments.map((att, idx) => (
+                                  <a key={att.id || `${att.name}-${idx}`} href={att.url} download={att.name} className="chip" style={{ fontSize: 11 }}>
+                                    <Icon name="file" size={12} /> {att.name}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -156,28 +156,60 @@ export default async function handler(req, res) {
         ...DOCTORS.map((d) => ({ name: d.name, role: 'doctor', email: `doctor-${slug(d.name)}@ultravet.local` })),
       ];
 
-      const { error: seedErr } = await db
-        .from('users')
-        .upsert(
-          staffSeed.map((s) => ({
-            name: s.name,
-            role: s.role,
-            email: s.email,
-            phone: null,
-            password_hash: null,
-          })),
-          { onConflict: 'email', ignoreDuplicates: false },
-        );
+      // Try bulk upsert first.
+      const { error: seedErr } = await db.from('users').upsert(
+        staffSeed.map((s) => ({
+          name: s.name,
+          role: s.role,
+          email: s.email,
+          phone: null,
+          password_hash: null,
+        })),
+        { onConflict: 'email', ignoreDuplicates: false },
+      );
 
-      if (!seedErr) {
-        const seeded = await db
+      // If bulk insert fails on some projects, fallback to per-row upsert.
+      if (seedErr) {
+        for (const s of staffSeed) {
+          await db.from('users').upsert(
+            { name: s.name, role: s.role, email: s.email, phone: null, password_hash: null },
+            { onConflict: 'email', ignoreDuplicates: false },
+          );
+        }
+      }
+
+      const seeded = await db
+        .from('users')
+        .select('id, name, role, email, phone')
+        .in('role', ['doctor', 'receptionist', 'admin'])
+        .neq('id', user.id)
+        .order('name', { ascending: true })
+        .limit(limit);
+      if (!seeded.error) data = seeded.data || data;
+
+      // Last resort: make sure at least reception user exists.
+      if (!data || data.length === 0) {
+        const receptionEmail = 'reception@ultravet.local';
+        const existingReception = await db
           .from('users')
           .select('id, name, role, email, phone')
-          .in('role', ['doctor', 'receptionist', 'admin'])
-          .neq('id', user.id)
-          .order('name', { ascending: true })
-          .limit(limit);
-        if (!seeded.error) data = seeded.data || data;
+          .eq('email', receptionEmail)
+          .maybeSingle();
+        if (!existingReception.data) {
+          await db.from('users').insert({
+            name: 'Реєстратура UltraVet',
+            role: 'receptionist',
+            email: receptionEmail,
+            phone: null,
+            password_hash: null,
+          });
+        }
+        const reception = await db
+          .from('users')
+          .select('id, name, role, email, phone')
+          .eq('email', receptionEmail)
+          .maybeSingle();
+        if (reception.data && reception.data.id !== user.id) data = [reception.data];
       }
     }
 
