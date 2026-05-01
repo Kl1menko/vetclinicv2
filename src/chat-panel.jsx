@@ -54,9 +54,33 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
   const typingChannelRef = useRef(null);
   const lastTypingSentRef = useRef(0);
 
-  const token = store.getAccessToken?.();
+  const [authReady, setAuthReady] = useState(Boolean(store.getAccessToken?.()));
+  const refreshInFlightRef = useRef(null);
+
+  const ensureAccessToken = async () => {
+    const current = store.getAccessToken?.();
+    if (current) return current;
+    if (refreshInFlightRef.current) return refreshInFlightRef.current;
+    refreshInFlightRef.current = fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.accessToken) {
+          store.setAccessToken?.(data.accessToken);
+          if (data.user) store.setCurrentUser?.(data.user);
+          setAuthReady(true);
+          return data.accessToken;
+        }
+        return null;
+      })
+      .catch(() => null)
+      .finally(() => { refreshInFlightRef.current = null; });
+    return refreshInFlightRef.current;
+  };
 
   const api = async (url, options = {}) => {
+    let token = store.getAccessToken?.();
+    if (!token) token = await ensureAccessToken();
+    if (!token) throw new Error('Сесія завершилась. Увійдіть знову.');
     const res = await fetch(url, {
       ...options,
       credentials: 'include',
@@ -67,6 +91,12 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
       },
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      const nextToken = await ensureAccessToken();
+      if (nextToken && nextToken !== token) {
+        return api(url, options);
+      }
+    }
     if (!res.ok) throw new Error(data.error || 'Помилка запиту');
     return data;
   };
@@ -82,7 +112,6 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
   const isPeerOnline = Boolean(activePeer?.id && onlineUserIds.has(activePeer.id));
 
   const loadConversations = async () => {
-    if (!token) return;
     setLoadingConversations(true);
     try {
       const data = await api('/api/chat?action=conversations');
@@ -99,15 +128,17 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
   };
 
   const loadContacts = async () => {
-    if (!token) return;
     try {
       const data = await api('/api/chat?action=users&limit=50');
       setContacts(data.users || []);
-    } catch {}
+    } catch (e) {
+      setContacts([]);
+      showToast(e.message || 'Не вдалося завантажити список контактів');
+    }
   };
 
   const loadMessages = async (conversationId) => {
-    if (!token || !conversationId) return;
+    if (!conversationId) return;
     setLoadingMessages(true);
     try {
       const data = await api(`/api/chat?action=messages&conversationId=${encodeURIComponent(conversationId)}`);
@@ -129,23 +160,29 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
   };
 
   useEffect(() => {
+    ensureAccessToken().finally(() => setAuthReady(Boolean(store.getAccessToken?.())));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!authReady) return;
     loadConversations();
     loadContacts();
     if (hasRealtimeConfig) return undefined;
     const timer = setInterval(loadConversations, 12000);
     return () => clearInterval(timer);
-  }, [token]);
+  }, [authReady, user?.id]);
 
   useEffect(() => {
+    if (!authReady) return;
     if (!activeId) return;
     loadMessages(activeId);
     if (hasRealtimeConfig) return undefined;
     const timer = setInterval(() => loadMessages(activeId), 4000);
     return () => clearInterval(timer);
-  }, [activeId, token]);
+  }, [activeId, authReady]);
 
   useEffect(() => {
-    if (!hasRealtimeConfig || !token || !supabaseClient) return undefined;
+    if (!hasRealtimeConfig || !authReady || !supabaseClient) return undefined;
     const channel = supabaseClient
       .channel(`chat-live-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
@@ -164,10 +201,10 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
     return () => {
       supabaseClient.removeChannel(channel);
     };
-  }, [token, user.id, activeId]);
+  }, [authReady, user.id, activeId]);
 
   useEffect(() => {
-    if (!hasRealtimeConfig || !token || !supabaseClient) return undefined;
+    if (!hasRealtimeConfig || !authReady || !supabaseClient) return undefined;
     const channel = supabaseClient.channel('chat-presence-global', {
       config: { presence: { key: user.id } },
     });
@@ -192,10 +229,10 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
     return () => {
       supabaseClient.removeChannel(channel);
     };
-  }, [token, user.id, user.name, user.role]);
+  }, [authReady, user.id, user.name, user.role]);
 
   useEffect(() => {
-    if (!hasRealtimeConfig || !token || !supabaseClient || !activeId) return undefined;
+    if (!hasRealtimeConfig || !authReady || !supabaseClient || !activeId) return undefined;
 
     if (typingChannelRef.current) {
       supabaseClient.removeChannel(typingChannelRef.current);
@@ -234,7 +271,7 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
         typingChannelRef.current = null;
       }
     };
-  }, [activeId, token, user.id]);
+  }, [activeId, authReady, user.id]);
 
   useEffect(() => {
     if (!hasRealtimeConfig || !typingChannelRef.current || !activeId) return undefined;

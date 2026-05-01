@@ -802,7 +802,8 @@ const LoginModal = ({ onClose, onSuccess }) => {
   const submitEmail = async () => {
     setError("");
     if (emailTab === "signup" && !form.name.trim()) return setError("Введіть імʼя");
-    if (!form.email.trim() && !form.phone.trim()) return setError("Введіть email або телефон");
+    if (emailTab === "signup" && !form.email.trim()) return setError("Введіть email");
+    if (emailTab === "login" && !form.email.trim() && !form.phone.trim()) return setError("Введіть email або телефон");
     if (!form.password.trim()) return setError("Введіть пароль");
     if (emailTab === "signup" && form.password !== form.confirmPassword) return setError("Паролі не збігаються");
     setLoading(true);
@@ -817,7 +818,7 @@ const LoginModal = ({ onClose, onSuccess }) => {
       const text = await res.text();
       const data = text ? JSON.parse(text) : {};
       if (!res.ok) throw new Error(data.error || `Помилка сервера (${res.status})`);
-      onSuccess(data.user);
+      onSuccess(data.user, data.isNew, data.accessToken);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -887,9 +888,23 @@ const LoginModal = ({ onClose, onSuccess }) => {
               {emailTab === "signup" && (
                 <input className="input" placeholder="Імʼя" autoComplete="name" value={form.name} onChange={(e) => update("name", e.target.value)} />
               )}
-              <input className="input" placeholder="Email або телефон" autoComplete="username" value={form.email} onChange={(e) => update("email", e.target.value)} />
+              <input
+                className="input"
+                placeholder={emailTab === "signup" ? "Email" : "Email або телефон"}
+                autoComplete={emailTab === "signup" ? "email" : "username"}
+                inputMode="email"
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+              />
               {emailTab === "signup" && (
-                <input className="input" placeholder="Телефон" autoComplete="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+                <input
+                  className="input"
+                  placeholder="+380 67 123 45 67"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  value={form.phone}
+                  onChange={(e) => update("phone", e.target.value)}
+                />
               )}
               <input className="input" type="password" placeholder="Пароль" autoComplete={emailTab === "login" ? "current-password" : "new-password"} value={form.password} onChange={(e) => update("password", e.target.value)} />
               {emailTab === "signup" && (

@@ -23,6 +23,26 @@ CREATE INDEX IF NOT EXISTS users_phone_idx    ON users (phone);
 CREATE INDEX IF NOT EXISTS users_telegram_idx ON users (telegram_id);
 CREATE INDEX IF NOT EXISTS users_viber_idx    ON users (viber_id);
 
+-- ─── Pets (client profile sync across devices) ──────────────────────────────
+CREATE TABLE IF NOT EXISTS pets (
+  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_user_id  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name           TEXT        NOT NULL,
+  species        TEXT,
+  breed          TEXT,
+  birth_date     DATE,
+  age            INT         NOT NULL DEFAULT 0,
+  weight         NUMERIC(6,2) NOT NULL DEFAULT 0,
+  alerts         TEXT[]      NOT NULL DEFAULT '{}',
+  last_visit     DATE,
+  sterilized     BOOLEAN     NOT NULL DEFAULT false,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS pets_owner_idx ON pets (owner_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS pets_owner_name_idx ON pets (owner_user_id, lower(name));
+
 -- ─── Refresh Tokens ──────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,6 +82,7 @@ CREATE INDEX IF NOT EXISTS otp_codes_viber_idx    ON otp_codes (viber_id);
 ALTER TABLE users          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE refresh_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE otp_codes      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pets           ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses RLS automatically — no policies needed for server-side use.
 
@@ -96,9 +117,18 @@ CREATE TABLE IF NOT EXISTS messages (
   )
 );
 
-ALTER TABLE conversation_participants
-  ADD CONSTRAINT IF NOT EXISTS conversation_participants_last_read_message_fkey
-  FOREIGN KEY (last_read_message_id) REFERENCES messages(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'conversation_participants_last_read_message_fkey'
+  ) THEN
+    ALTER TABLE conversation_participants
+      ADD CONSTRAINT conversation_participants_last_read_message_fkey
+      FOREIGN KEY (last_read_message_id) REFERENCES messages(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS conversations_updated_idx ON conversations (updated_at DESC);
 CREATE INDEX IF NOT EXISTS conv_participants_user_idx ON conversation_participants (user_id);

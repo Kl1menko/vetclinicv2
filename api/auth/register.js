@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
   if (!name?.trim()) return err(res, 400, 'Імʼя обовʼязкове');
   if (!password || password.length < 6) return err(res, 400, 'Пароль мінімум 6 символів');
-  if (!email?.trim() && !phone?.trim()) return err(res, 400, 'Email або телефон обовʼязкові');
+  if (!email?.trim()) return err(res, 400, 'Email обовʼязковий');
 
   const db = getDb();
 

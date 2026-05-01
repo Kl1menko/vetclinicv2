@@ -792,15 +792,59 @@ const PetFormModal = ({ form, onClose, onSave }) => (
 export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
   const store = useStore();
   const { currentUser: user, pets, appointments, messages, cancelAppointment, savePet, saveClient, sessionChecked } = store;
+  const sameText = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
   const [tab, setTab] = uS2('upcoming');
   const [petFormData, setPetFormData] = uS2(null);
   const [editProfile, setEditProfile] = uS2(false);
   const [profileDraft, setProfileDraft] = uS2({});
   const [savingProfile, setSavingProfile] = uS2(false);
+  const [remotePets, setRemotePets] = uS2([]);
+  const [petsLoaded, setPetsLoaded] = uS2(false);
+
+  const mapApiPet = (p) => ({
+    id: p.id,
+    owner: user?.name || '',
+    name: p.name || '',
+    species: p.species || '',
+    breed: p.breed || '',
+    birthDate: p.birth_date || null,
+    age: Number(p.age || 0),
+    weight: Number(p.weight || 0),
+    alerts: Array.isArray(p.alerts) ? p.alerts : [],
+    lastVisit: p.last_visit || '',
+    sterilized: Boolean(p.sterilized),
+  });
 
   uE2(() => {
     if (sessionChecked && !user) openLogin?.();
   }, [sessionChecked, user]);
+
+  uE2(() => {
+    const token = store.getAccessToken?.();
+    if (!user?.id || !token) {
+      setPetsLoaded(false);
+      setRemotePets([]);
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/pets', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('load failed')))
+      .then(data => {
+        if (cancelled) return;
+        const items = Array.isArray(data?.pets) ? data.pets.map(mapApiPet) : [];
+        setRemotePets(items);
+        setPetsLoaded(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPetsLoaded(false);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // Waiting for session restore — show skeleton
   if (!sessionChecked) {
@@ -833,11 +877,12 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
     );
   }
 
-  const myPets = pets.filter(p => p.owner === user?.name);
-  const myAppts = appointments.filter(a => a.client === user?.name).sort((a, b) => b.date?.localeCompare(a.date));
+  const localPets = pets.filter(p => sameText(p.owner, user?.name));
+  const myPets = petsLoaded ? remotePets : localPets;
+  const myAppts = appointments.filter(a => sameText(a.client, user?.name)).sort((a, b) => b.date?.localeCompare(a.date));
   const upcoming = myAppts.filter(a => !['Завершено','Скасовано'].includes(a.status));
   const history = myAppts.filter(a => ['Завершено','Скасовано'].includes(a.status));
-  const myMessages = messages.filter(m => !m.phone || m.phone === user?.phone);
+  const myMessages = messages.filter(m => !m.phone || sameText(m.phone, user?.phone));
 
   const NAV = [
     { k: 'upcoming', l: 'Записи', i: 'calendar', badge: upcoming.length || null },
@@ -856,13 +901,47 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
 
   const submitPetForm = () => {
     if (!petFormData) return;
-    const result = savePet({
-      ...petFormData,
-      owner: user?.name || '',
+    const payload = {
+      id: petFormData.id || null,
+      name: petFormData.name || '',
+      species: petFormData.species || '',
+      breed: petFormData.breed || '',
       birthDate: petFormData.birthDate || null,
       age: petFormData.birthDate ? Math.max(0, new Date().getFullYear() - new Date(petFormData.birthDate).getFullYear()) : Number(petFormData.age || 0),
       weight: Number(petFormData.weight || 0),
       alerts: String(petFormData.alertsText || '').split(',').map(x => x.trim()).filter(Boolean),
+      lastVisit: petFormData.lastVisit || null,
+      sterilized: Boolean(petFormData.sterilized),
+    };
+    const token = store.getAccessToken?.();
+    if (token) {
+      const url = payload.id ? `/api/pets/${payload.id}` : '/api/pets';
+      const method = payload.id ? 'PATCH' : 'POST';
+      fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('save failed')))
+        .then(data => {
+          const nextPet = data?.pet ? mapApiPet(data.pet) : null;
+          if (nextPet) {
+            setRemotePets(prev => {
+              const exists = prev.some(p => p.id === nextPet.id);
+              return exists ? prev.map(p => p.id === nextPet.id ? nextPet : p) : [nextPet, ...prev];
+            });
+            setPetsLoaded(true);
+          }
+          setPetFormData(null);
+          showToast?.('Тварину збережено');
+        })
+        .catch(() => showToast?.('Помилка збереження тварини'));
+      return;
+    }
+    const result = savePet({
+      ...payload,
+      owner: user?.name || '',
     });
     if (!result.ok) { showToast?.(result.error); return; }
     setPetFormData(null);
@@ -894,6 +973,30 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
       showToast?.('Дані оновлено');
     } catch { showToast?.('Помилка збереження'); }
     setSavingProfile(false);
+  };
+
+  const deleteProfile = async () => {
+    const ok = window.confirm('Видалити профіль назавжди? Цю дію не можна скасувати.');
+    if (!ok) return;
+    try {
+      const token = store.getAccessToken?.();
+      const res = await fetch('/api/users/me', {
+        method: 'DELETE',
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        showToast?.(data.error || 'Не вдалося видалити профіль');
+        return;
+      }
+      store.setAccessToken?.(null);
+      store.setCurrentUser?.(null);
+      showToast?.('Профіль видалено');
+      go?.('home');
+    } catch {
+      showToast?.('Не вдалося видалити профіль');
+    }
   };
 
   const memberSince = user.created_at ? new Date(user.created_at).toLocaleDateString('uk-UA', { month: 'long', year: 'numeric' }) : null;
@@ -1187,6 +1290,13 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
                   <h2 className="profile-content-title">Акаунт</h2>
                 </div>
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <button className="profile-danger-row" onClick={deleteProfile}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ffe8e8', color: '#cc2f3f', display: 'grid', placeItems: 'center' }}>
+                      <Icon name="x" size={16} />
+                    </div>
+                    <span style={{ fontWeight: 500 }}>Видалити профіль</span>
+                    <Icon name="chevRight" size={16} color="var(--ink-400)" />
+                  </button>
                   <button className="profile-danger-row" onClick={store.logout}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--coral-100)', color: 'var(--coral-600)', display: 'grid', placeItems: 'center' }}>
                       <Icon name="logout" size={16} />
