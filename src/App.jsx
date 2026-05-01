@@ -814,8 +814,9 @@ const LoginModal = ({ onClose, onSuccess }) => {
         credentials: "include",
         body: JSON.stringify(form),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Помилка авторизації");
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
+      if (!res.ok) throw new Error(data.error || `Помилка сервера (${res.status})`);
       onSuccess(data.user);
     } catch (e) {
       setError(e.message);
