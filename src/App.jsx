@@ -771,7 +771,7 @@ const VIBER_BOT = import.meta.env.VITE_VIBER_BOT_NAME || "UltraVet";
 const LoginModal = ({ onClose, onSuccess }) => {
   const [method, setMethod] = uS("email");
   const [emailTab, setEmailTab] = uS("login");
-  const [form, setForm] = uS({ name: "", email: "", phone: "", password: "" });
+  const [form, setForm] = uS({ name: "", email: "", phone: "", password: "", confirmPassword: "" });
   const [tgCode, setTgCode] = uS("");
   const [viberCode, setViberCode] = uS("");
   const [error, setError] = uS("");
@@ -804,6 +804,7 @@ const LoginModal = ({ onClose, onSuccess }) => {
     if (emailTab === "signup" && !form.name.trim()) return setError("Введіть імʼя");
     if (!form.email.trim() && !form.phone.trim()) return setError("Введіть email або телефон");
     if (!form.password.trim()) return setError("Введіть пароль");
+    if (emailTab === "signup" && form.password !== form.confirmPassword) return setError("Паролі не збігаються");
     setLoading(true);
     try {
       const url = emailTab === "signup" ? "/api/auth/register" : "/api/auth/login";
@@ -890,6 +891,9 @@ const LoginModal = ({ onClose, onSuccess }) => {
                 <input className="input" placeholder="Телефон" autoComplete="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
               )}
               <input className="input" type="password" placeholder="Пароль" autoComplete={emailTab === "login" ? "current-password" : "new-password"} value={form.password} onChange={(e) => update("password", e.target.value)} />
+              {emailTab === "signup" && (
+                <input className="input" type="password" placeholder="Підтвердіть пароль" autoComplete="new-password" value={form.confirmPassword} onChange={(e) => update("confirmPassword", e.target.value)} />
+              )}
               {error && <div className="field-error">{error}</div>}
               <button className="btn btn-primary" onClick={submitEmail} disabled={loading}>
                 {loading ? "Зачекайте…" : emailTab === "login" ? "Увійти" : "Зареєструватись"}
