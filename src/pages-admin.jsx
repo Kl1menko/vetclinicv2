@@ -35,6 +35,21 @@ const downloadCsv = (filename, rows) => {
   a.click();
   URL.revokeObjectURL(url);
 };
+const downloadText = (filename, text) => {
+  const blob = new Blob([String(text || '')], { type: 'text/plain;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result || ''));
+  reader.onerror = () => reject(new Error('Не вдалося зчитати файл.'));
+  reader.readAsDataURL(file);
+});
 const reportMetrics = (appointments) => {
   const completed = appointments.filter(a => a.status === 'completed');
   const paid = completed.filter(a => (a.paymentStatus || 'paid') === 'paid');
@@ -98,7 +113,7 @@ const dashboardSeries = (appointments, period) => {
   return { points, total };
 };
 
-export const AdminLayout = ({ current, setRoute, role, setRole, exitAdmin, children, search, setSearch, allowedRoutes = null }) => {
+export const AdminLayout = ({ current, setRoute, role, setRole, roleOptions = [], exitAdmin, children, search, setSearch, allowedRoutes = null }) => {
   const { appointments, messages, pets, updateMessage } = useStore();
   const [showNotifications, setShowNotifications] = uA(false);
   const unreadMessages = messages.filter(m => !m.readAt);
@@ -188,12 +203,10 @@ export const AdminLayout = ({ current, setRoute, role, setRole, exitAdmin, child
         <div style={{padding:'10px 12px', background:'rgba(255,255,255,0.03)', borderRadius:10, marginBottom:18, fontSize:12}}>
           <div style={{color:'#8aa6a4', marginBottom:6}}>Роль</div>
           <select value={role} onChange={e=>setRole(e.target.value)} style={{width:'100%', background:'transparent', color:'#fff', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 8px', fontSize:13}}>
-            <option value="admin">Адміністратор</option>
-            <option value="doctor">Лікар</option>
-            <option value="receptionist">Реєстратор</option>
+            {(roleOptions || []).map(name => <option key={name} value={name}>{name}</option>)}
           </select>
         </div>
-        <nav style={{display:'grid', gap:2, flex:1}}>
+        <nav style={{display:'flex', flexDirection:'column', gap:2}}>
           {items.filter(it => !allowedRoutes || allowedRoutes.includes(it.k)).map(it => (
             <button key={it.k} onClick={()=>setRoute(it.k)}
               style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:9, border:0, background: current===it.k?'var(--teal-600)':'transparent', color: current===it.k?'#fff':'#cfdcdb', fontWeight: current===it.k?600:500, fontSize:13.5, cursor:'pointer', textAlign:'left'}}>
@@ -206,7 +219,7 @@ export const AdminLayout = ({ current, setRoute, role, setRole, exitAdmin, child
             </button>
           ))}
         </nav>
-        <button onClick={exitAdmin} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:9, border:0, background:'transparent', color:'#cfdcdb', fontSize:13, cursor:'pointer'}}>
+        <button onClick={exitAdmin} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:9, border:0, background:'transparent', color:'#cfdcdb', fontSize:13, cursor:'pointer', marginTop:'auto'}}>
           <Icon name="logout" size={16}/> Вийти на сайт
         </button>
       </aside>
@@ -241,7 +254,7 @@ export const AdminLayout = ({ current, setRoute, role, setRole, exitAdmin, child
               <Avatar name="Олена Ткач" size={28}/>
               <div style={{fontSize:13}}>
                 <div style={{color:'#fff', fontWeight:600, lineHeight:1}}>Олена Ткач</div>
-                <div style={{color:'#8aa6a4', fontSize:11}}>{role === 'admin'?'Адмін':role==='doctor'?'Лікар':'Реєстратор'}</div>
+                <div style={{color:'#8aa6a4', fontSize:11}}>{role}</div>
               </div>
             </div>
           </div>
@@ -290,9 +303,9 @@ const ABtn = ({ tone = 'soft', size = 'md', icon, children, style, ...rest }) =>
   );
 };
 
-const AdminModal = ({ title, values, fields, onChange, onClose, onSubmit, submitLabel = 'Зберегти' }) => (
+const AdminModal = ({ title, values, fields, onChange, onFileChange, onClose, onSubmit, submitLabel = 'Зберегти' }) => (
   <div className="backdrop" onClick={onClose}>
-    <div onClick={e=>e.stopPropagation()} style={{width:'100%', maxWidth:520, background:'#0f2120', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:24, boxShadow:'0 24px 70px rgba(0,0,0,0.35)'}}>
+    <div onClick={e=>e.stopPropagation()} style={{width:'100%', maxWidth:520, maxHeight:'92vh', overflowY:'auto', background:'#0f2120', border:'1px solid rgba(255,255,255,0.08)', borderRadius:14, padding:24, boxShadow:'0 24px 70px rgba(0,0,0,0.35)'}}>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18}}>
         <h2 style={{fontSize:22, color:'#fff'}}>{title}</h2>
         <button onClick={onClose} style={{width:32, height:32, borderRadius:8, border:0, background:'rgba(255,255,255,0.06)', color:'#cfdcdb', cursor:'pointer'}}><Icon name="x" size={16}/></button>
@@ -302,20 +315,34 @@ const AdminModal = ({ title, values, fields, onChange, onClose, onSubmit, submit
           <div key={f.key}>
             <label style={{fontSize:12, color:'#8aa6a4', marginBottom:6, display:'block'}}>{f.label}</label>
             {f.type === 'textarea' ? (
-              <ATextarea rows="3" value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)}/>
+              <ATextarea rows="3" disabled={Boolean(f.disabled)} value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)}/>
+            ) : f.type === 'file' ? (
+              <div style={{display:'grid', gap:8}}>
+                <AInput type="file" disabled={Boolean(f.disabled)} multiple={f.multiple !== false} accept={f.accept || '*/*'} onChange={e=>onFileChange?.(f.key, Array.from(e.target.files || []))}/>
+                {Array.isArray(values[f.key]) && values[f.key].length > 0 && (
+                  <div style={{display:'grid', gap:6}}>
+                    {values[f.key].map((item, idx) => (
+                      <div key={item.id || `${item.name}-${idx}`} style={{display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:12, color:'#cfdcdb', background:'rgba(255,255,255,0.04)', borderRadius:8, padding:'6px 8px'}}>
+                        <span style={{overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{item.name}</span>
+                        <button type="button" disabled={Boolean(f.disabled)} onClick={()=>onChange(f.key, (values[f.key] || []).filter((_, i) => i !== idx))} style={{border:0, background:'transparent', color:'#e64561', cursor:'pointer', opacity:Boolean(f.disabled)?0.5:1}}>видалити</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : f.type === 'select' ? (
-              <ASelect value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)}>
+              <ASelect disabled={Boolean(f.disabled)} value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)}>
                 {(f.options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </ASelect>
             ) : f.type === 'datalist' ? (
               <>
-                <AInput list={`dl-${f.key}`} value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)} placeholder={f.placeholder}/>
+                <AInput disabled={Boolean(f.disabled)} list={`dl-${f.key}`} value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)} placeholder={f.placeholder}/>
                 <datalist id={`dl-${f.key}`}>
                   {(f.options || []).map(o => <option key={o} value={o}/>)}
                 </datalist>
               </>
             ) : (
-              <AInput type={f.type || 'text'} value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)}/>
+              <AInput disabled={Boolean(f.disabled)} type={f.type || 'text'} value={values[f.key] || ''} onChange={e=>onChange(f.key, e.target.value)}/>
             )}
           </div>
         ))}
@@ -513,7 +540,7 @@ export const AdminDashboard = ({ role, search = '', setRoute }) => {
 // =================================================================
 // CALENDAR
 // =================================================================
-export const AdminCalendar = ({ search = '', notify = () => {} }) => {
+export const AdminCalendar = ({ search = '', notify = () => {}, hasPermission = () => true }) => {
   const { appointments, clients, pets, doctors, services, addAppointment } = useStore();
   const [view, setView] = uA('day');
   const [form, setForm] = uA(null);
@@ -572,6 +599,7 @@ export const AdminCalendar = ({ search = '', notify = () => {} }) => {
     setForm({ client:'', pet:'', petType:'Інше', serviceName:'Консультація', doctorName:doctors[0]?.name || '—', date, time, status:'waiting', price:600, paymentStatus:'unpaid', paymentMethod:'' });
   };
   const save = () => {
+    if (!hasPermission('Створення записів')) return notify('Недостатньо прав для створення запису.');
     const result = addAppointment({ ...form, price: toNum(form.price, 0), force: true });
     if (!result.ok) return notify(result.error);
     setForm(null);
@@ -590,7 +618,7 @@ export const AdminCalendar = ({ search = '', notify = () => {} }) => {
               return <button key={p} onClick={()=>setView(k)} style={{padding:'6px 14px', border:0, borderRadius:6, background: view===k?'var(--teal-600)':'transparent', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer'}}>{p}</button>;
             })}
           </div>
-          <button className="btn btn-primary btn-sm" onClick={()=>createAt(doctors[0], '09:00')}><Icon name="plus" size={14} color="#fff"/> Запис</button>
+          <button disabled={!hasPermission('Створення записів')} className="btn btn-primary btn-sm" onClick={()=>createAt(doctors[0], '09:00')}><Icon name="plus" size={14} color="#fff"/> Запис</button>
         </div>
       </div>
 
@@ -611,7 +639,7 @@ export const AdminCalendar = ({ search = '', notify = () => {} }) => {
             {doctors.map((d, di) => {
               const ap = todayApps.find(a => a.time === h && a.doctor === d.name);
               return (
-                <div key={d.id} onClick={()=>!ap && createAt(d, h)} style={{padding:6, borderLeft:'1px solid rgba(255,255,255,0.04)', position:'relative', cursor: ap?'default':'pointer'}}>
+                <div key={d.id} onClick={()=>!ap && hasPermission('Створення записів') && createAt(d, h)} style={{padding:6, borderLeft:'1px solid rgba(255,255,255,0.04)', position:'relative', cursor: ap || !hasPermission('Створення записів')?'default':'pointer'}}>
                   {ap && (
                     <div style={{padding:8, borderRadius:8, background: ap.status==='completed'?'rgba(30,169,114,0.15)':ap.status==='in-progress'?'rgba(245,185,66,0.18)':'rgba(18,152,148,0.18)', border:`1px solid ${ap.status==='completed'?'var(--green-500)':ap.status==='in-progress'?'var(--amber-400)':'var(--teal-500)'}`, fontSize:11, cursor:'pointer'}}>
                       <div style={{color:'#fff', fontWeight:600}}>{ap.pet}</div>
@@ -635,7 +663,7 @@ export const AdminCalendar = ({ search = '', notify = () => {} }) => {
           {weekDays.map(d => {
             const date = isoDate(d);
             const dayApps = visibleApps.filter(a => a.date === date);
-            return <button key={date} onClick={()=>createOnDate(date)} style={{padding:10, border:0, borderLeft:'1px solid rgba(255,255,255,0.04)', background:'transparent', textAlign:'left', cursor:'pointer'}}>
+            return <button key={date} onClick={()=>hasPermission('Створення записів') && createOnDate(date)} style={{padding:10, border:0, borderLeft:'1px solid rgba(255,255,255,0.04)', background:'transparent', textAlign:'left', cursor:hasPermission('Створення записів')?'pointer':'default'}}>
               <div style={{display:'grid', gap:8}}>
                 {dayApps.length === 0 && <span style={{color:'#526b69', fontSize:12}}>Вільно</span>}
                 {dayApps.map(ap => <div key={ap.id} style={{padding:9, borderRadius:8, background:'rgba(18,152,148,0.13)', border:'1px solid rgba(18,152,148,0.28)'}}>
@@ -656,7 +684,7 @@ export const AdminCalendar = ({ search = '', notify = () => {} }) => {
             const date = isoDate(d);
             const dayApps = visibleApps.filter(a => a.date === date);
             const muted = d.getMonth() !== baseDate.getMonth();
-            return <button key={date} onClick={()=>createOnDate(date)} style={{minHeight:104, padding:10, border:0, borderLeft:'1px solid rgba(255,255,255,0.04)', borderTop:'1px solid rgba(255,255,255,0.04)', background:date===todayIso?'rgba(18,152,148,0.09)':'transparent', textAlign:'left', cursor:'pointer'}}>
+            return <button key={date} onClick={()=>hasPermission('Створення записів') && createOnDate(date)} style={{minHeight:104, padding:10, border:0, borderLeft:'1px solid rgba(255,255,255,0.04)', borderTop:'1px solid rgba(255,255,255,0.04)', background:date===todayIso?'rgba(18,152,148,0.09)':'transparent', textAlign:'left', cursor:hasPermission('Створення записів')?'pointer':'default'}}>
               <div style={{color:muted?'#526b69':'#fff', fontSize:12, fontWeight:700, marginBottom:8}}>{d.getDate()}</div>
               <div style={{display:'grid', gap:5}}>
                 {dayApps.slice(0,3).map(ap => <div key={ap.id} style={{padding:'4px 6px', borderRadius:6, background:'rgba(255,255,255,0.06)', color:'#cfdcdb', fontSize:10, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{ap.time} {ap.pet}</div>)}
@@ -686,7 +714,7 @@ export const AdminCalendar = ({ search = '', notify = () => {} }) => {
 // =================================================================
 // APPOINTMENTS
 // =================================================================
-export const AdminAppointments = ({ search: globalSearch = '', notify = () => {} }) => {
+export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}, hasPermission = () => true }) => {
   const { appointments, pets, clients, doctors, services, updateAppointment, deleteAppointment, addAppointment } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
   const tableCols = 'minmax(170px,1.2fr) minmax(120px,0.9fr) minmax(125px,0.95fr) 180px 104px 86px minmax(408px,1.65fr)';
@@ -694,8 +722,9 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
   const [search, setSearch] = uA('');
   const [showAdvancedFilters, setShowAdvancedFilters] = uA(false);
   const [advanced, setAdvanced] = uA({ doctor:'all', service:'all', payment:'all', from:'', to:'' });
-  const empty = { client:'', pet:'', petType:'Кіт', serviceName:'Консультація', doctorName:'—', date:new Date().toISOString().slice(0,10), time:'09:00', status:'waiting', price:600, paymentStatus:'unpaid', paymentMethod:'' };
+  const empty = { client:'', pet:'', petType:'Кіт', serviceName:'Консультація', doctorName:'—', date:new Date().toISOString().slice(0,10), time:'09:00', status:'waiting', price:600, paymentStatus:'unpaid', paymentMethod:'', diagnosis:'', treatment:'', medications:'', prescription:'', attachments:[] };
   const [form, setForm] = uA(null);
+  const [formMode, setFormMode] = uA('full');
   const clientOptions = uMA(() => Array.from(new Set(clients.map(c => c.name))), [clients]);
   const doctorOptions = uMA(() => ['—', ...doctors.map(d => d.name)], [doctors]);
   const serviceOptions = uMA(() => Array.from(new Set(services.flatMap(s => [s.name, ...(s.items || []).map(i => i.name)]))), [services]);
@@ -744,7 +773,7 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
     if (advanced.from && a.date < advanced.from) return false;
     if (advanced.to && a.date > advanced.to) return false;
     return true;
-  });
+  }).sort((a, b) => `${b.date || ''} ${b.time || ''}`.localeCompare(`${a.date || ''} ${a.time || ''}`));
   const filters = [
     {k:'all', l:'Усі', n:appointments.length},
     {k:'confirmed', l:'Підтверджено', n:appointments.filter(a=>a.status==='confirmed').length},
@@ -768,13 +797,32 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
     }
     setForm(null);
   };
+  const addAttachments = async (files = []) => {
+    if (!files.length) return;
+    try {
+      const prepared = await Promise.all(files.map(async (file) => ({
+        id: `att_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size || 0,
+        url: await fileToDataUrl(file),
+        addedAt: new Date().toISOString(),
+      })));
+      setForm(prev => ({ ...prev, attachments: [...(prev.attachments || []), ...prepared] }));
+    } catch {
+      notify('Не вдалося прикріпити один або кілька файлів.');
+    }
+  };
+  const canCreate = hasPermission('Створення записів');
+  const canCancel = hasPermission('Скасування записів');
+  const canTreat = hasPermission('Призначення лікування');
   return (
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Записи</h1><p style={{color:'#8aa6a4', fontSize:14}}>Усі записи клініки</p></div>
         <div style={{display:'flex', gap:10}}>
           <button className="btn btn-sm" onClick={()=>setShowAdvancedFilters(v=>!v)} style={{background:showAdvancedFilters?'rgba(117,121,234,0.28)':'rgba(255,255,255,0.06)', color:'#fff'}}><Icon name="filter" size={14}/> Фільтри</button>
-          <button className="btn btn-primary btn-sm" onClick={()=>setForm(empty)}><Icon name="plus" size={14} color="#fff"/> Новий</button>
+          <button disabled={!canCreate} className="btn btn-primary btn-sm" onClick={()=>{ setFormMode('full'); setForm(empty); }}><Icon name="plus" size={14} color="#fff"/> Новий</button>
         </div>
       </div>
 
@@ -840,7 +888,7 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
             cancelled: { bg:'rgba(230,69,97,0.14)', bd:'rgba(230,69,97,0.4)', fg:'#ffc2cf' },
           };
           return (
-          <div className="appointments-table-row" key={ap.id} style={{display:'grid', gridTemplateColumns:tableCols, gap:12, padding:'12px 18px', alignItems:'center', borderTop: i?'1px solid rgba(255,255,255,0.04)':0}}>
+          <div className="appointments-table-row" key={ap.id} style={{display:'grid', gridTemplateColumns:tableCols, gap:12, padding:'12px 18px', alignItems:'center', borderTop: i?'1px solid rgba(255,255,255,0.04)':0, opacity: ap.status === 'cancelled' ? 0.55 : 1, filter: ap.status === 'cancelled' ? 'grayscale(0.25)' : 'none'}}>
             <div style={{minWidth:0}}><div style={{color:'#fff', fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{ap.client}</div><div style={{color:'#8aa6a4', fontSize:11, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{ap.pet} · {ap.petType}</div></div>
             <div style={{color:'#cfdcdb', fontSize:12, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{ap.service}</div>
             <div style={{color:'#cfdcdb', fontSize:12, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{ap.doctor}</div>
@@ -849,17 +897,68 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
             <div style={{fontFamily:'var(--font-display)', color:'#fff', fontWeight:700}}>{ap.price} ₴</div>
             <div style={{display:'flex', gap:4, justifyContent:'flex-end', flexWrap:'nowrap'}}>
               {Object.entries(statusLabel).filter(([st]) => st !== ap.status).map(([st, label]) => (
-                <button key={st} onClick={()=>updateAppointment(ap.id,{status:st})} title={label} style={{padding:'5px 9px', border:`1px solid ${actionTone[st].bd}`, borderRadius:6, background:actionTone[st].bg, color:actionTone[st].fg, cursor:'pointer', fontSize:11, fontWeight:600}}>{label}</button>
+                <button
+                  key={st}
+                  onClick={() => {
+                    if (st === 'in-progress') {
+                      if (!canTreat) return notify('Недостатньо прав для ведення прийому.');
+                      setFormMode('visit');
+                      setForm({
+                        ...ap,
+                        status: 'in-progress',
+                        serviceName: ap.service,
+                        doctorName: ap.doctor,
+                        diagnosis: ap.diagnosis || '',
+                        treatment: ap.treatment || '',
+                        medications: ap.medications || '',
+                        prescription: ap.prescription || '',
+                        attachments: Array.isArray(ap.attachments) ? ap.attachments : [],
+                      });
+                      return;
+                    }
+                    if (st === 'cancelled' && !canCancel) return notify('Недостатньо прав для скасування записів.');
+                    if (st !== 'cancelled' && !canCreate) return notify('Недостатньо прав для зміни статусу.');
+                    updateAppointment(ap.id, { status: st });
+                  }}
+                  title={label}
+                  style={{padding:'5px 9px', border:`1px solid ${actionTone[st].bd}`, borderRadius:6, background:actionTone[st].bg, color:actionTone[st].fg, cursor:'pointer', fontSize:11, fontWeight:600}}
+                >
+                  {label}
+                </button>
               ))}
-              <button onClick={()=>setForm({ ...ap, serviceName: ap.service, doctorName: ap.doctor })} title="Редагувати" style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#cfdcdb', cursor:'pointer', display:'grid', placeItems:'center'}}><Icon name="edit" size={13}/></button>
-              <button onClick={()=>ask('Видалити цей запис із календаря та списку прийомів?', () => deleteAppointment(ap.id))} title="Видалити" style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#e64561', cursor:'pointer', display:'grid', placeItems:'center'}}><Icon name="trash" size={13}/></button>
+              <button disabled={ap.status === 'cancelled' || !canCreate} onClick={()=>{
+                setFormMode('schedule');
+                setForm({ ...ap, serviceName: ap.service, doctorName: ap.doctor });
+              }} title="Редагувати" style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#cfdcdb', cursor:ap.status === 'cancelled' || !canCreate?'not-allowed':'pointer', opacity:ap.status === 'cancelled' || !canCreate?0.45:1, display:'grid', placeItems:'center'}}><Icon name="edit" size={13}/></button>
+              <button disabled={ap.status === 'cancelled' || !canCancel} onClick={()=>ask('Видалити цей запис із календаря та списку прийомів?', () => deleteAppointment(ap.id))} title="Видалити" style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#e64561', cursor:ap.status === 'cancelled' || !canCancel?'not-allowed':'pointer', opacity:ap.status === 'cancelled' || !canCancel?0.45:1, display:'grid', placeItems:'center'}}><Icon name="trash" size={13}/></button>
             </div>
           </div>
           );
         })}
         </div>
       </ACard>
-      {form && <AdminModal title={form.id ? 'Редагувати запис' : 'Новий запис'} values={form} onChange={onFormChange} onClose={()=>setForm(null)} onSubmit={save} fields={[
+      {form && <AdminModal title={formMode === 'visit' ? 'Прийом тварини' : form.id ? 'Редагувати запис' : 'Новий запис'} values={form} onChange={onFormChange} onFileChange={(_, files) => addAttachments(files)} onClose={()=>setForm(null)} onSubmit={save} submitLabel={formMode === 'visit' ? 'Зберегти прийом' : 'Зберегти'} fields={formMode === 'schedule' ? [
+        {key:'serviceName', label:'Послуга', type:'datalist', options:serviceOptions},
+        {key:'date', label:'Дата', type:'date'},
+        {key:'time', label:'Час'},
+      ] : formMode === 'visit' ? [
+        {key:'client', label:'Клієнт', type:'text', disabled:true},
+        {key:'pet', label:'Тварина', type:'text', disabled:true},
+        {key:'serviceName', label:'Послуга', type:'text', disabled:true},
+        {key:'doctorName', label:'Лікар', type:'text', disabled:true},
+        {key:'date', label:'Дата', type:'date', disabled:true},
+        {key:'time', label:'Час', disabled:true},
+        {key:'status', label:'Статус', type:'select', options:[
+          {value:'in-progress', label:'На прийомі'},
+          {value:'completed', label:'Завершено'},
+          {value:'cancelled', label:'Скасовано'},
+        ]},
+        {key:'diagnosis', label:'Діагноз', type:'textarea'},
+        {key:'treatment', label:'План лікування', type:'textarea'},
+        {key:'medications', label:'Призначення (ліки/дозування/курс)', type:'textarea'},
+        {key:'prescription', label:'Текст рецепта', type:'textarea'},
+        {key:'attachments', label:'Документи (PDF/фото)', type:'file', accept:'.pdf,image/*', multiple:true},
+      ] : [
         {key:'client', label:'Клієнт', type:'datalist', options:clientOptions, placeholder:'Почніть вводити імʼя'},
         {key:'pet', label:'Тварина', type:'datalist', options:petOptions, placeholder:form?.client ? 'Тварини власника' : 'Оберіть зі списку'},
         {key:'petType', label:'Вид', type:'select', options:[
@@ -892,13 +991,14 @@ export const AdminAppointments = ({ search: globalSearch = '', notify = () => {}
 // =================================================================
 // CLIENTS
 // =================================================================
-export const AdminClients = ({ search = '', notify = () => {} }) => {
+export const AdminClients = ({ search = '', notify = () => {}, hasPermission = () => true }) => {
   const { clients, saveClient, deleteClient } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
   const visible = clients.filter(c => matches(c, search));
   const clientTableCols = '56px minmax(220px,1.5fr) minmax(190px,1.2fr) minmax(220px,1.4fr) 72px 72px 132px 82px';
   const [form, setForm] = uA(null);
   const save = () => {
+    if (!hasPermission('Управління користувачами')) return notify('Недостатньо прав для редагування клієнтів.');
     const result = saveClient({ ...form, pets: toNum(form.pets, 0), visits: toNum(form.visits, 0) });
     if (!result.ok) return notify(result.error);
     notify(form.id ? 'Клієнта оновлено.' : 'Клієнта додано.');
@@ -908,7 +1008,7 @@ export const AdminClients = ({ search = '', notify = () => {} }) => {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Клієнти</h1><p style={{color:'#8aa6a4', fontSize:14}}>{visible.length} клієнтів у системі</p></div>
-        <button className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', phone:'', email:'', pets:0, visits:0, since:String(new Date().getFullYear()), status:'new' })}><Icon name="plus" size={14} color="#fff"/> Додати клієнта</button>
+        <button disabled={!hasPermission('Управління користувачами')} className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', phone:'', email:'', pets:0, visits:0, since:String(new Date().getFullYear()), status:'new' })}><Icon name="plus" size={14} color="#fff"/> Додати клієнта</button>
       </div>
       <ACard style={{padding:0, overflow:'hidden'}}>
         <div style={{display:'grid', gridTemplateColumns:clientTableCols, gap:12, padding:'12px 18px', fontSize:11, color:'#8aa6a4', textTransform:'uppercase', fontWeight:600, letterSpacing:'0.04em', borderBottom:'1px solid rgba(255,255,255,0.06)', alignItems:'center'}}>
@@ -927,12 +1027,12 @@ export const AdminClients = ({ search = '', notify = () => {} }) => {
             <div style={{color:'#fff', fontSize:13, fontWeight:600, textAlign:'center'}}>{c.visits}</div>
             <div style={{display:'flex', justifyContent:'center'}}><StatusPill status={c.status} compact/></div>
             <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
-              <button onClick={()=>setForm(c)} style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#cfdcdb', cursor:'pointer', display:'grid', placeItems:'center'}}><Icon name="edit" size={14}/></button>
-              <button onClick={()=>ask(`Видалити клієнта «${c.name}»?`, () => {
+              <button disabled={!hasPermission('Управління користувачами')} onClick={()=>setForm(c)} style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#cfdcdb', cursor:hasPermission('Управління користувачами')?'pointer':'not-allowed', opacity:hasPermission('Управління користувачами')?1:0.45, display:'grid', placeItems:'center'}}><Icon name="edit" size={14}/></button>
+              <button disabled={!hasPermission('Управління користувачами')} onClick={()=>ask(`Видалити клієнта «${c.name}»?`, () => {
                 const result = deleteClient(c.id);
                 if (result?.ok === false) return notify(result.error);
                 notify('Клієнта видалено.');
-              })} style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#e64561', cursor:'pointer', display:'grid', placeItems:'center'}}><Icon name="trash" size={14}/></button>
+              })} style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#e64561', cursor:hasPermission('Управління користувачами')?'pointer':'not-allowed', opacity:hasPermission('Управління користувачами')?1:0.45, display:'grid', placeItems:'center'}}><Icon name="trash" size={14}/></button>
             </div>
           </div>
         ))}
@@ -953,9 +1053,27 @@ export const AdminClients = ({ search = '', notify = () => {} }) => {
 // =================================================================
 // PETS
 // =================================================================
-export const AdminPets = ({ search = '', notify = () => {} }) => {
+export const AdminPets = ({ search = '', notify = () => {}, hasPermission = () => true }) => {
   const { pets, clients, appointments, medicalRecords, vaccinations, savePet, deletePet } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
+  const speciesKind = (species) => {
+    const key = String(species || '').toLowerCase();
+    if (key === 'кіт') return 'cat';
+    if (key === 'собака') return 'dog';
+    if (key === 'кролик') return 'rabbit';
+    return 'other';
+  };
+  const speciesColor = (species) => {
+    const key = String(species || '').toLowerCase();
+    if (key === 'кіт') return 'violet';
+    if (key === 'собака') return 'coral';
+    if (key === 'кролик') return 'teal';
+    if (key === 'птах') return 'amber';
+    if (key === 'тхір') return 'rose';
+    if (key === 'гризун') return 'green';
+    if (key === 'рептилія') return 'violet';
+    return 'teal';
+  };
   const visible = pets.filter(p => matches(p, search));
   const clientOptions = uMA(() => Array.from(new Set(clients.map(c => c.name))), [clients]);
   const [selectedId, setSelectedId] = uA(pets[0]?.id);
@@ -975,9 +1093,15 @@ export const AdminPets = ({ search = '', notify = () => {} }) => {
       title: a.service,
       doctor: a.doctor,
       notes: a.notes || 'Завершений прийом.',
+      diagnosis: a.diagnosis || '',
+      treatment: a.treatment || '',
+      medications: a.medications || '',
+      prescription: a.prescription || '',
+      attachments: Array.isArray(a.attachments) ? a.attachments : [],
     })),
   ].sort((a,b)=>String(b.date).localeCompare(String(a.date))) : [], [medicalRecords, petAppointments, selected]);
   const save = () => {
+    if (!hasPermission('Картки пацієнтів')) return notify('Недостатньо прав для редагування карток тварин.');
     const payload = { ...form, age: toNum(form.age, 0), weight: toNum(form.weight, 0), alerts: csv(form.alertsText) };
     const result = savePet(payload);
     if (!result.ok) return notify(result.error);
@@ -988,7 +1112,7 @@ export const AdminPets = ({ search = '', notify = () => {} }) => {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Картки тварин</h1><p style={{color:'#8aa6a4', fontSize:14}}>{visible.length} тварин у базі</p></div>
-        <button className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', species:'Кіт', breed:'', age:1, weight:0, owner:'', alertsText:'' })}><Icon name="plus" size={14} color="#fff"/> Завести</button>
+        <button disabled={!hasPermission('Картки пацієнтів')} className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', species:'Кіт', breed:'', age:1, weight:0, owner:'', alertsText:'' })}><Icon name="plus" size={14} color="#fff"/> Завести</button>
       </div>
       {pets.length === 0 && (
         <ACard style={{padding:48, textAlign:'center', color:'#8aa6a4'}}>
@@ -1008,7 +1132,7 @@ export const AdminPets = ({ search = '', notify = () => {} }) => {
         <ACard style={{padding:0, overflow:'hidden', height:'fit-content'}}>
           {visible.map((p,i)=>(
             <button key={p.id} onClick={()=>setSelectedId(p.id)} style={{width:'100%', display:'grid', gridTemplateColumns:'auto 1fr', gap:12, padding:'14px 18px', alignItems:'center', border:0, background: selected?.id===p.id?'rgba(18,152,148,0.15)':'transparent', borderTop: i?'1px solid rgba(255,255,255,0.04)':0, textAlign:'left', cursor:'pointer'}}>
-              <PetIllustration kind={p.species==='Кіт'?'cat':'dog'} color={p.species==='Кіт'?'teal':'coral'} size={48}/>
+              <PetIllustration kind={speciesKind(p.species)} color={speciesColor(p.species)} size={48}/>
               <div>
                 <div style={{color:'#fff', fontWeight:600, fontSize:14}}>{p.name}</div>
                 <div style={{color:'#8aa6a4', fontSize:12}}>{p.species} · {p.breed} · {p.age} р.</div>
@@ -1020,7 +1144,7 @@ export const AdminPets = ({ search = '', notify = () => {} }) => {
         <div style={{display:'grid', gap:14}}>
           <ACard style={{padding:24}}>
             <div style={{display:'flex', gap:18, alignItems:'flex-start'}}>
-              <PetIllustration kind={selected.species==='Кіт'?'cat':'dog'} color="teal" size={120}/>
+              <PetIllustration kind={speciesKind(selected.species)} color={speciesColor(selected.species)} size={120}/>
               <div style={{flex:1}}>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
                   <div>
@@ -1077,6 +1201,23 @@ export const AdminPets = ({ search = '', notify = () => {} }) => {
                   <div style={{fontSize:11, color:'var(--teal-300)', fontWeight:600, marginBottom:4}}>{e.date}</div>
                   <div style={{color:'#fff', fontSize:14, fontWeight:600, marginBottom:4}}>{e.title}</div>
                   <div style={{color:'#cfdcdb', fontSize:13}}>{e.notes}</div>
+                  {e.diagnosis && <div style={{color:'#9fb3b1', fontSize:12, marginTop:6}}><strong>Діагноз:</strong> {e.diagnosis}</div>}
+                  {e.treatment && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Лікування:</strong> {e.treatment}</div>}
+                  {e.medications && <div style={{color:'#9fb3b1', fontSize:12, marginTop:4}}><strong>Призначення:</strong> {e.medications}</div>}
+                  {Array.isArray(e.attachments) && e.attachments.length > 0 && (
+                    <div style={{display:'flex', flexWrap:'wrap', gap:8, marginTop:8}}>
+                      {e.attachments.map((att, ai) => (
+                        <a key={att.id || `${att.name}-${ai}`} href={att.url} download={att.name} style={{padding:'5px 8px', borderRadius:8, fontSize:11, background:'rgba(255,255,255,0.06)', color:'#cfdcdb'}}>
+                          {att.name}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {e.prescription && e.prescription !== '—' && (
+                    <button type="button" onClick={() => downloadText(`recept-${selected.name}-${e.date}.txt`, `${selected.name}\n${e.date}\nЛікар: ${e.doctor || '—'}\n\n${e.prescription}`)} style={{marginTop:8, border:0, borderRadius:8, padding:'6px 10px', background:'rgba(117,121,234,0.25)', color:'#fff', cursor:'pointer', fontSize:12}}>
+                      Експорт рецепта
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -1112,13 +1253,24 @@ export const AdminPets = ({ search = '', notify = () => {} }) => {
 // =================================================================
 // DOCTORS
 // =================================================================
-export const AdminDoctors = ({ search = '', notify = () => {} }) => {
+export const AdminDoctors = ({ search = '', notify = () => {}, hasPermission = () => true }) => {
   const { doctors, services, saveDoctor, deleteDoctor } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
   const visible = doctors.filter(d => matches(d, search));
   const [form, setForm] = uA(null);
+  const serviceNameById = uMA(() => Object.fromEntries((services || []).map(s => [s.id, s.name])), [services]);
+  const serviceIdByName = uMA(() => Object.fromEntries((services || []).map(s => [String(s.name || '').toLowerCase(), s.id])), [services]);
+  const serviceNameOptions = uMA(() => (services || []).map(s => s.name), [services]);
   const save = () => {
-    const result = saveDoctor({ ...form, exp: toNum(form.exp, 0), services: csv(form.servicesText), schedule: csv(form.scheduleText) });
+    if (!hasPermission('Управління користувачами')) return notify('Недостатньо прав для редагування лікарів.');
+    const mappedServices = csv(form.servicesText).map((value) => {
+      const raw = String(value || '').trim();
+      const byName = serviceIdByName[raw.toLowerCase()];
+      if (byName) return byName;
+      const byId = services.find(s => s.id === raw);
+      return byId?.id || raw;
+    }).filter(Boolean);
+    const result = saveDoctor({ ...form, exp: toNum(form.exp, 0), services: mappedServices, schedule: csv(form.scheduleText) });
     if (!result.ok) return notify(result.error);
     notify(form.id ? 'Лікаря оновлено.' : 'Лікаря додано.');
     setForm(null);
@@ -1132,7 +1284,7 @@ export const AdminDoctors = ({ search = '', notify = () => {} }) => {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Лікарі</h1><p style={{color:'#8aa6a4', fontSize:14}}>Управління командою клініки</p></div>
-        <button className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', role:'Терапевт', bio:'', exp:1, servicesText:'therapy', scheduleText:'Пн 09:00–17:00' })}><Icon name="plus" size={14} color="#fff"/> Додати лікаря</button>
+        <button disabled={!hasPermission('Управління користувачами')} className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', role:'Терапевт', bio:'', exp:1, servicesText:'Терапія', scheduleText:'Пн 09:00–17:00' })}><Icon name="plus" size={14} color="#fff"/> Додати лікаря</button>
       </div>
       {visible.length === 0 && (
         <ACard style={{padding:48, textAlign:'center', color:'#8aa6a4', fontSize:14}}>Лікарів поки немає. Додайте першого через кнопку вгорі.</ACard>
@@ -1146,7 +1298,7 @@ export const AdminDoctors = ({ search = '', notify = () => {} }) => {
                 <div style={{color:'#fff', fontWeight:600, fontSize:16}}>{d.name}</div>
                 <div style={{color:'#8aa6a4', fontSize:12}}>{d.role}</div>
               </div>
-              <div style={{display:'flex', gap:6}}><button onClick={()=>setForm({ ...d, servicesText:d.services.join(', '), scheduleText:d.schedule.join(', ') })} style={{width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.05)', border:0, color:'#cfdcdb', cursor:'pointer'}}><Icon name="edit" size={14}/></button><button onClick={()=>ask(`Видалити лікаря «${d.name}»?`, () => remove(d))} style={{width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.05)', border:0, color:'#e64561', cursor:'pointer'}}><Icon name="trash" size={14}/></button></div>
+              <div style={{display:'flex', gap:6}}><button onClick={()=>setForm({ ...d, servicesText:d.services.map(id => serviceNameById[id] || id).join(', '), scheduleText:d.schedule.join(', ') })} style={{width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.05)', border:0, color:'#cfdcdb', cursor:'pointer'}}><Icon name="edit" size={14}/></button><button onClick={()=>ask(`Видалити лікаря «${d.name}»?`, () => remove(d))} style={{width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.05)', border:0, color:'#e64561', cursor:'pointer'}}><Icon name="trash" size={14}/></button></div>
             </div>
             <p style={{color:'#cfdcdb', fontSize:13, marginBottom:14}}>{d.bio}</p>
             <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:14}}>
@@ -1166,7 +1318,7 @@ export const AdminDoctors = ({ search = '', notify = () => {} }) => {
         {key:'name', label:'Імʼя'},
         {key:'role', label:'Спеціалізація'},
         {key:'exp', label:'Досвід', type:'number'},
-        {key:'servicesText', label:'ID послуг через кому'},
+        {key:'servicesText', label:'Послуги через кому (укр. назви)', type:'datalist', options:serviceNameOptions, placeholder:'Терапія, УЗД та рентген'},
         {key:'scheduleText', label:'Графік через кому'},
         {key:'bio', label:'Опис', type:'textarea'},
       ]}/>}
@@ -1178,12 +1330,13 @@ export const AdminDoctors = ({ search = '', notify = () => {} }) => {
 // =================================================================
 // SERVICES
 // =================================================================
-export const AdminServices = ({ search = '', notify = () => {} }) => {
+export const AdminServices = ({ search = '', notify = () => {}, hasPermission = () => true }) => {
   const { services, saveService, deleteService } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
   const visible = services.filter(s => matches(s, search));
   const [form, setForm] = uA(null);
   const save = () => {
+    if (!hasPermission('Управління послугами')) return notify('Недостатньо прав для редагування послуг.');
     const first = { name: form.itemName || form.name, price: toNum(form.price, 0), duration: toNum(form.duration, 30) };
     const result = saveService({ ...form, items: [first, ...(form.items || []).slice(1)] });
     if (!result.ok) return notify(result.error);
@@ -1199,7 +1352,7 @@ export const AdminServices = ({ search = '', notify = () => {} }) => {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Послуги</h1><p style={{color:'#8aa6a4', fontSize:14}}>Каталог послуг та цін</p></div>
-        <button className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', short:'', desc:'', icon:'heart', color:'teal', itemName:'Консультація', price:600, duration:30 })}><Icon name="plus" size={14} color="#fff"/> Додати послугу</button>
+        <button disabled={!hasPermission('Управління послугами')} className="btn btn-primary btn-sm" onClick={()=>setForm({ name:'', short:'', desc:'', icon:'heart', color:'teal', itemName:'Консультація', price:600, duration:30 })}><Icon name="plus" size={14} color="#fff"/> Додати послугу</button>
       </div>
       <ACard style={{padding:0, overflow:'hidden'}}>
         {visible.length === 0 && (
@@ -1235,12 +1388,13 @@ export const AdminServices = ({ search = '', notify = () => {} }) => {
 // =================================================================
 // ARTICLES
 // =================================================================
-export const AdminArticles = ({ search = '', notify = () => {} }) => {
+export const AdminArticles = ({ search = '', notify = () => {}, hasPermission = () => true }) => {
   const { articles, saveArticle, deleteArticle } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
   const visible = articles.filter(a => matches(a, search));
   const [form, setForm] = uA(null);
   const save = () => {
+    if (!hasPermission('Управління статтями')) return notify('Недостатньо прав для редагування статей.');
     const result = saveArticle({ ...form, read: toNum(form.read, 4), views: toNum(form.views, 0) });
     if (!result.ok) return notify(result.error);
     notify(form.id ? 'Статтю оновлено.' : 'Статтю додано.');
@@ -1255,7 +1409,7 @@ export const AdminArticles = ({ search = '', notify = () => {} }) => {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Статті</h1><p style={{color:'#8aa6a4', fontSize:14}}>Блог клініки</p></div>
-        <button className="btn btn-primary btn-sm" onClick={()=>setForm({ title:'', tag:'Поради', excerpt:'', read:4, views:0, date:formatDateUk() })}><Icon name="plus" size={14} color="#fff"/> Нова стаття</button>
+        <button disabled={!hasPermission('Управління статтями')} className="btn btn-primary btn-sm" onClick={()=>setForm({ title:'', tag:'Поради', excerpt:'', read:4, views:0, date:formatDateUk() })}><Icon name="plus" size={14} color="#fff"/> Нова стаття</button>
       </div>
       <ACard style={{padding:0, overflow:'hidden'}}>
         <div style={{display:'grid', gridTemplateColumns:'1fr auto auto auto auto', gap:14, padding:'12px 22px', fontSize:11, color:'#8aa6a4', textTransform:'uppercase', fontWeight:600, letterSpacing:'0.04em', borderBottom:'1px solid rgba(255,255,255,0.06)'}}>
@@ -1419,7 +1573,7 @@ export const AdminMessages = ({ search = '', notify = () => {} }) => {
 // =================================================================
 // REPORTS
 // =================================================================
-export const AdminReports = ({ notify = () => {} }) => {
+export const AdminReports = ({ notify = () => {}, hasPermission = () => true }) => {
   const { appointments, clients } = useStore();
   const [period, setPeriod] = uA('all');
   const periodOptions = [
@@ -1498,7 +1652,7 @@ export const AdminReports = ({ notify = () => {} }) => {
               <button key={p.k} onClick={()=>setPeriod(p.k)} style={{padding:'7px 12px', border:0, borderRadius:8, background: period===p.k?'var(--teal-600)':'transparent', color:'#fff', fontSize:12, fontWeight:600, cursor:'pointer'}}>{p.l}</button>
             ))}
           </div>
-          <button onClick={exportCsv} style={{padding:'10px 14px', border:0, borderRadius:8, background:'rgba(255,255,255,0.06)', color:'#fff', cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', gap:8}}><Icon name="file" size={14}/> CSV</button>
+          <button disabled={!hasPermission('Експорт даних')} onClick={exportCsv} style={{padding:'10px 14px', border:0, borderRadius:8, background:'rgba(255,255,255,0.06)', color:'#fff', cursor:hasPermission('Експорт даних')?'pointer':'not-allowed', opacity:hasPermission('Експорт даних')?1:0.45, fontSize:13, display:'flex', alignItems:'center', gap:8}}><Icon name="file" size={14}/> CSV</button>
           <button onClick={printSummary} style={{padding:'10px 14px', border:0, borderRadius:8, background:'rgba(255,255,255,0.06)', color:'#fff', cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', gap:8}}><Icon name="print" size={14}/> Друк</button>
         </div>
       </div>
@@ -1545,7 +1699,7 @@ export const AdminReports = ({ notify = () => {} }) => {
 // =================================================================
 // ROLES
 // =================================================================
-export const AdminRoles = ({ notify = () => {} }) => {
+export const AdminRoles = ({ notify = () => {}, hasPermission = () => true }) => {
   const { roles, addRole, renameRole, deleteRole, toggleRolePermission } = useStore();
   const { ask, confirmDialog } = useAdminConfirm();
   const [editing, setEditing] = uA(null);
@@ -1587,7 +1741,7 @@ export const AdminRoles = ({ notify = () => {} }) => {
     <div>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
         <div><h1 style={{fontSize:28, color:'#fff'}}>Ролі та права</h1><p style={{color:'#8aa6a4', fontSize:14}}>Керування доступом</p></div>
-        <button className="btn btn-primary btn-sm" onClick={onAdd}><Icon name="plus" size={14} color="#fff"/> Нова роль</button>
+        <button disabled={!hasPermission('Управління ролями')} className="btn btn-primary btn-sm" onClick={onAdd}><Icon name="plus" size={14} color="#fff"/> Нова роль</button>
       </div>
       <div style={{display:'grid', gridTemplateColumns:`repeat(${roles.length},1fr)`, gap:14, marginBottom:24}}>
         {roles.map((r,i)=>(
@@ -1631,7 +1785,7 @@ export const AdminRoles = ({ notify = () => {} }) => {
               <div style={{padding:'10px 14px', color:'#cfdcdb', borderBottom: i<ALL_ROLE_PERMISSIONS.length-1?'1px solid rgba(255,255,255,0.04)':0}}>{p}</div>
               {roles.map((r)=>(
                 <div key={r.name} style={{padding:'10px 14px', textAlign:'center', borderBottom: i<ALL_ROLE_PERMISSIONS.length-1?'1px solid rgba(255,255,255,0.04)':0}}>
-                  <button onClick={()=>togglePerm(r.name, p)} disabled={r.name==='Адміністратор'} style={{width:26, height:26, border:0, borderRadius:7, background:r.perms.includes(p)?'rgba(30,169,114,0.16)':'rgba(255,255,255,0.04)', color:r.perms.includes(p)?'var(--green-500)':'rgba(255,255,255,0.25)', cursor:r.name==='Адміністратор'?'not-allowed':'pointer', opacity:r.name==='Адміністратор'?0.7:1}}>
+                  <button onClick={()=>togglePerm(r.name, p)} disabled={r.name==='Адміністратор' || !hasPermission('Управління ролями')} style={{width:26, height:26, border:0, borderRadius:7, background:r.perms.includes(p)?'rgba(30,169,114,0.16)':'rgba(255,255,255,0.04)', color:r.perms.includes(p)?'var(--green-500)':'rgba(255,255,255,0.25)', cursor:r.name==='Адміністратор' || !hasPermission('Управління ролями')?'not-allowed':'pointer', opacity:r.name==='Адміністратор' || !hasPermission('Управління ролями')?0.7:1}}>
                     {r.perms.includes(p) ? <Icon name="check" size={14}/> : '—'}
                   </button>
                 </div>
@@ -1648,7 +1802,7 @@ export const AdminRoles = ({ notify = () => {} }) => {
 // =================================================================
 // SETTINGS
 // =================================================================
-export const AdminSettings = ({ notify = () => {} }) => {
+export const AdminSettings = ({ notify = () => {}, hasPermission = () => true }) => {
   const store = useStore();
   const { settings, updateSettings, resetState, importState } = store;
   const { ask, confirmDialog } = useAdminConfirm();
@@ -1661,6 +1815,7 @@ export const AdminSettings = ({ notify = () => {} }) => {
   const setIntegration = (id, patch) => setDraft(d => ({ ...d, integrations: (d.integrations || []).map(it => it.id === id ? { ...it, ...patch } : it) }));
   const setAdminPassword = (value) => setDraft(d => ({ ...d, adminPassword: value }));
   const saveDraft = () => {
+    if (!hasPermission('Налаштування клініки')) return notify('Недостатньо прав для зміни налаштувань.');
     if (draft.clinic.email && !validEmail(draft.clinic.email)) return notify('Введіть коректний email клініки.');
     if (draft.clinic.phone && !validPhone(draft.clinic.phone)) return notify('Введіть коректний телефон клініки.');
     for (const row of draft.schedule) {

@@ -49,9 +49,9 @@ const DEFAULT_VACCINATIONS = [
 ];
 
 const DEFAULT_MEDICAL_RECORDS = [
-  { id:'mr1', pet:'Барсік', date:'2026-04-12', title:'Терапевтичний прийом', doctor:'Марта Коваль', notes:'Профілактичний огляд, все в нормі. Призначено вітамінний комплекс.', appointmentId:null },
-  { id:'mr2', pet:'Рекс', date:'2026-02-10', title:'УЗД серця', doctor:'Марта Коваль', notes:'Структурних змін не виявлено. Рекомендовано контроль через 12 міс.', appointmentId:null },
-  { id:'mr3', pet:'Спайк', date:'2025-11-22', title:'Чистка зубів', doctor:'Ольга Середа', notes:'УЗ чистка під седацією. Видалено зуб 102.', appointmentId:null },
+  { id:'mr1', pet:'Барсік', date:'2026-04-12', title:'Терапевтичний прийом', doctor:'Марта Коваль', notes:'Профілактичний огляд, все в нормі. Призначено вітамінний комплекс.', diagnosis:'Профілактичний огляд без патологій.', treatment:'Спостереження вдома, контроль через 6 місяців.', medications:'Вітамінний комплекс 1 раз на день 30 днів.', prescription:'Rp.: Вітамінний комплекс по 1 таб 1 р/д, курс 30 днів.', attachments:[], appointmentId:null },
+  { id:'mr2', pet:'Рекс', date:'2026-02-10', title:'УЗД серця', doctor:'Марта Коваль', notes:'Структурних змін не виявлено. Рекомендовано контроль через 12 міс.', diagnosis:'Ознак кардіоміопатії не виявлено.', treatment:'Планове спостереження.', medications:'—', prescription:'—', attachments:[], appointmentId:null },
+  { id:'mr3', pet:'Спайк', date:'2025-11-22', title:'Чистка зубів', doctor:'Ольга Середа', notes:'УЗ чистка під седацією. Видалено зуб 102.', diagnosis:'Зубний камінь, гінгівіт.', treatment:'Санація ротової порожнини.', medications:'Антисептичний гель 2 р/д 7 днів.', prescription:'Rp.: Гель стоматологічний наносити 2 р/д, 7 днів.', attachments:[], appointmentId:null },
 ];
 
 const seedState = {
@@ -76,16 +76,6 @@ const StoreContext = createContext(null);
 
 const uid = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
 const clean = (value) => String(value || '').trim();
-const passwordHash = (value) => {
-  const text = String(value || '');
-  if (typeof btoa === 'function' && typeof TextEncoder === 'function') {
-    const bytes = new TextEncoder().encode(text);
-    let binary = '';
-    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
-    return btoa(binary);
-  }
-  return text;
-};
 const activeAppointment = (appointment) => !['completed', 'cancelled'].includes(appointment.status);
 const currentYear = () => String(new Date().getFullYear());
 const sameText = (a, b) => clean(a).toLowerCase() === clean(b).toLowerCase();
@@ -133,6 +123,34 @@ const resolveService = (services, payload = {}) => {
     service.items?.some(item => sameText(item.name, key))
   );
 };
+const normalizeAttachments = (attachments = []) => (
+  Array.isArray(attachments)
+    ? attachments
+      .filter(item => item && (item.url || item.name))
+      .map(item => ({
+        id: item.id || uid('att'),
+        name: clean(item.name || 'file'),
+        type: clean(item.type || 'application/octet-stream'),
+        size: Number(item.size || 0),
+        url: item.url || '',
+        addedAt: item.addedAt || new Date().toISOString(),
+      }))
+    : []
+);
+const buildMedicalRecordFromAppointment = (appointment, existingId = null) => ({
+  id: existingId || uid('mr'),
+  pet: appointment.pet,
+  date: appointment.date,
+  title: appointment.service,
+  doctor: appointment.doctor,
+  notes: appointment.notes || 'Прийом завершено.',
+  diagnosis: appointment.diagnosis || '',
+  treatment: appointment.treatment || '',
+  medications: appointment.medications || '',
+  prescription: appointment.prescription || '',
+  attachments: normalizeAttachments(appointment.attachments),
+  appointmentId: appointment.id,
+});
 const formatDateUk = (d = new Date()) => {
   const months = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
@@ -184,30 +202,10 @@ export const AppStoreProvider = ({ children }) => {
 
   const actions = useMemo(() => ({
     acceptCookies: () => setState(s => ({ ...s, cookiesAccepted: true })),
-    login: (payload = {}) => {
-      const key = clean(payload.email || payload.phone).toLowerCase();
-      const phone = clean(payload.phone || payload.email);
-      const password = passwordHash(payload.password);
-      const found = state.clients.find(c => clean(c.email).toLowerCase() === key || clean(c.phone) === phone);
-      if (!found || !found.passwordHash || found.passwordHash !== password) return false;
-      setState(s => ({ ...s, currentUser: found }));
-      return true;
-    },
-    logout: () => setState(s => ({ ...s, currentUser: null })),
-    register: (payload) => {
-      const name = clean(payload.name);
-      const email = clean(payload.email);
-      const phone = clean(payload.phone);
-      const password = clean(payload.password);
-      if (!name || (!email && !phone) || !password) return { ok: false, reason: 'invalid' };
-      const duplicate = state.clients.some(c =>
-        (email && clean(c.email).toLowerCase() === email.toLowerCase()) ||
-        (phone && clean(c.phone) === phone)
-      );
-      if (duplicate) return { ok: false, reason: 'duplicate' };
-      const client = { id: uid('c'), name, phone, email, passwordHash: passwordHash(password), pets: 0, visits: 0, since: currentYear(), status: 'new' };
-      setState(s => ({ ...s, clients: [...s.clients, client], currentUser: client }));
-      return { ok: true, client };
+    setCurrentUser: (user) => setState(s => ({ ...s, currentUser: user || null })),
+    logout: () => {
+      fetch('/api/auth/refresh', { method: 'DELETE', credentials: 'include' }).catch(() => {});
+      setState(s => ({ ...s, currentUser: null }));
     },
     addMessage: (payload) => setState(s => {
       if (!clean(payload.name) || !clean(payload.message)) return s;
@@ -264,6 +262,11 @@ export const AppStoreProvider = ({ children }) => {
         paymentMethod: payload.paymentMethod || '',
         paidAt: payload.paidAt || '',
         notes: payload.notes || '',
+        diagnosis: payload.diagnosis || '',
+        treatment: payload.treatment || '',
+        medications: payload.medications || '',
+        prescription: payload.prescription || '',
+        attachments: normalizeAttachments(payload.attachments),
       });
       setState(s => {
         const clientExists = s.clients.some(c => sameText(c.name, clientName));
@@ -272,7 +275,7 @@ export const AppStoreProvider = ({ children }) => {
         const pets = petExists ? s.pets : [...s.pets, { id: uid('p'), name: petName, owner: clientName, species: payload.petType || payload.petSpecies || 'Інше', breed: payload.breed || '', age: Number(payload.age || 0), weight: Number(payload.weight || 0), alerts: [], lastVisit: '—', sterilized: false }];
         const base = withClientStats({ ...s, appointments: [appointment, ...s.appointments], clients, pets });
         const withRecord = appointment.status === 'completed'
-          ? { ...base, medicalRecords: [{ id: uid('mr'), pet: appointment.pet, date: appointment.date, title: appointment.service, doctor: appointment.doctor, notes: appointment.notes || 'Прийом завершено.', appointmentId: appointment.id }, ...base.medicalRecords] }
+          ? { ...base, medicalRecords: [buildMedicalRecordFromAppointment(appointment), ...base.medicalRecords] }
           : base;
         return syncInvoices(withRecord);
       });
@@ -292,8 +295,10 @@ export const AppStoreProvider = ({ children }) => {
         const pets = petExists ? s.pets : [...s.pets, { id: uid('p'), name: clean(next.pet), owner: clean(next.client), species: next.petType || 'Інше', breed: next.breed || '', age: Number(next.age || 0), weight: Number(next.weight || 0), alerts: [], lastVisit: '—', sterilized: false }];
         const updated = s.appointments.map(a => a.id === id ? next : a);
         const hasRecord = s.medicalRecords.some(r => r.appointmentId === id);
-        const records = next.status === 'completed' && !hasRecord
-          ? [{ id: uid('mr'), pet: next.pet, date: next.date, title: next.service, doctor: next.doctor, notes: next.notes || 'Прийом завершено.', appointmentId: next.id }, ...s.medicalRecords]
+        const records = next.status === 'completed'
+          ? (hasRecord
+            ? s.medicalRecords.map(r => r.appointmentId === id ? buildMedicalRecordFromAppointment(next, r.id) : r)
+            : [buildMedicalRecordFromAppointment(next), ...s.medicalRecords])
           : s.medicalRecords;
         return syncInvoices(withClientStats({ ...s, appointments: updated, clients, pets, medicalRecords: records }));
       });

@@ -765,157 +765,199 @@ const QuickBookingModal = ({ onClose, onConfirm, services }) => {
 };
 
 // Login modal
-const LoginModal = ({ onClose, onLogin, onRegister }) => {
-  const [tab, setTab] = uS("login");
+const TG_BOT = import.meta.env.VITE_TG_BOT_USERNAME || "";
+const VIBER_BOT = import.meta.env.VITE_VIBER_BOT_NAME || "UltraVet";
+
+const LoginModal = ({ onClose, onSuccess }) => {
+  const [method, setMethod] = uS("email");
+  const [emailTab, setEmailTab] = uS("login");
   const [form, setForm] = uS({ name: "", email: "", phone: "", password: "" });
+  const [viberCode, setViberCode] = uS("");
   const [error, setError] = uS("");
+  const [loading, setLoading] = uS(false);
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const submit = () => {
-    setError("");
-    if (tab === "signup" && !form.name.trim()) return setError("Введіть імʼя");
-    if (!form.email.trim() && !form.phone.trim())
-      return setError("Введіть email або телефон");
-    if (!form.password.trim()) return setError("Введіть пароль");
-    if (tab === "signup") {
-      const result = onRegister(form);
-      if (!result?.ok) {
-        return setError(
-          result?.reason === "duplicate"
-            ? "Користувач з таким email або телефоном вже зареєстрований"
-            : "Перевірте дані для реєстрації",
-        );
+
+  // Telegram widget
+  uE(() => {
+    if (method !== "telegram" || !TG_BOT) return;
+    window.__tgAuthCallback = async (tgUser) => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetch("/api/auth/telegram", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(tgUser),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Помилка авторизації");
+        onSuccess(data.user);
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
       }
-      return;
+    };
+    const container = document.getElementById("tg-widget");
+    if (!container || container.querySelector("script")) return;
+    const script = document.createElement("script");
+    script.src = "https://telegram.org/js/telegram-widget.js?22";
+    script.setAttribute("data-telegram-login", TG_BOT);
+    script.setAttribute("data-size", "large");
+    script.setAttribute("data-onauth", "__tgAuthCallback(user)");
+    script.setAttribute("data-request-access", "write");
+    script.async = true;
+    container.appendChild(script);
+    return () => { container.innerHTML = ""; delete window.__tgAuthCallback; };
+  }, [method]);
+
+  const submitEmail = async () => {
+    setError("");
+    if (emailTab === "signup" && !form.name.trim()) return setError("Введіть імʼя");
+    if (!form.email.trim() && !form.phone.trim()) return setError("Введіть email або телефон");
+    if (!form.password.trim()) return setError("Введіть пароль");
+    setLoading(true);
+    try {
+      const url = emailTab === "signup" ? "/api/auth/register" : "/api/auth/login";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Помилка авторизації");
+      onSuccess(data.user);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
     }
-    if (!onLogin(form)) setError("Невірний логін або пароль");
   };
+
+  const submitViber = async () => {
+    setError("");
+    if (!viberCode.trim()) return setError("Введіть код з Viber");
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/viber-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: viberCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Невірний код");
+      onSuccess(data.user);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const tabBtn = (k, label) => (
+    <button
+      key={k}
+      onClick={() => { setMethod(k); setError(""); }}
+      style={{
+        flex: 1, border: 0, padding: "8px", borderRadius: 8,
+        background: method === k ? "var(--paper)" : "transparent",
+        fontWeight: 600, fontSize: 13, cursor: "pointer",
+      }}
+    >{label}</button>
+  );
+
   return (
     <div className="backdrop" onClick={onClose}>
-      <div
-        className="card pop"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          padding: "56px 32px 32px",
-          maxWidth: 420,
-          width: "100%",
-          position: "relative",
-        }}
+      <div className="card pop" onClick={(e) => e.stopPropagation()}
+        style={{ padding: "56px 32px 32px", maxWidth: 420, width: "100%", position: "relative" }}
       >
-        <button
-          onClick={onClose}
-          aria-label="Закрити"
-          style={{
-            position: "absolute",
-            top: 18,
-            right: 18,
-            border: 0,
-            background: "var(--ink-100)",
-            borderRadius: "50%",
-            width: 36,
-            height: 36,
-            display: "grid",
-            placeItems: "center",
-            cursor: "pointer",
-          }}
-        >
-          <Icon name="x" size={16} />
-        </button>
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            padding: 4,
-            background: "var(--ink-100)",
-            borderRadius: 10,
-            marginBottom: 24,
-          }}
-        >
-          <button
-            onClick={() => setTab("login")}
-            style={{
-              flex: 1,
-              border: 0,
-              padding: "8px",
-              borderRadius: 8,
-              background: tab === "login" ? "var(--paper)" : "transparent",
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            Вхід
-          </button>
-          <button
-            onClick={() => setTab("signup")}
-            style={{
-              flex: 1,
-              border: 0,
-              padding: "8px",
-              borderRadius: 8,
-              background: tab === "signup" ? "var(--paper)" : "transparent",
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-          >
-            Реєстрація
-          </button>
+        <button onClick={onClose} aria-label="Закрити"
+          style={{ position: "absolute", top: 18, right: 18, border: 0, background: "var(--ink-100)", borderRadius: "50%", width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer" }}
+        ><Icon name="x" size={16} /></button>
+
+        <div style={{ display: "flex", gap: 6, padding: 4, background: "var(--ink-100)", borderRadius: 10, marginBottom: 24 }}>
+          {tabBtn("email", "Email")}
+          {tabBtn("telegram", "Telegram")}
+          {tabBtn("viber", "Viber")}
         </div>
-        {tab === "login" ? (
-          <div style={{ display: "grid", gap: 14 }}>
-            <h2 style={{ fontSize: 22 }}>Вхід у кабінет</h2>
-            <input
-              className="input"
-              placeholder="Email або телефон"
-              autoComplete="username"
-              value={form.email}
-              onChange={(e) => update("email", e.target.value)}
-            />
-            <input
-              className="input"
-              type="password"
-              placeholder="Пароль"
-              autoComplete="current-password"
-              value={form.password}
-              onChange={(e) => update("password", e.target.value)}
-            />
-            {error && <div className="field-error">{error}</div>}
-            <button className="btn btn-primary" onClick={submit}>
-              Увійти
-            </button>
-            <button className="btn btn-ghost btn-sm">Забули пароль?</button>
+
+        {method === "email" && (
+          <>
+            <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+              {["login", "signup"].map((t) => (
+                <button key={t} onClick={() => { setEmailTab(t); setError(""); }}
+                  style={{ flex: 1, border: 0, padding: "6px 8px", borderRadius: 8, background: emailTab === t ? "var(--teal-600)" : "transparent", color: emailTab === t ? "#fff" : "inherit", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                >{t === "login" ? "Вхід" : "Реєстрація"}</button>
+              ))}
+            </div>
+            <div style={{ display: "grid", gap: 14 }}>
+              <h2 style={{ fontSize: 22 }}>{emailTab === "login" ? "Вхід у кабінет" : "Створення акаунта"}</h2>
+              {emailTab === "signup" && (
+                <input className="input" placeholder="Імʼя" autoComplete="name" value={form.name} onChange={(e) => update("name", e.target.value)} />
+              )}
+              <input className="input" placeholder="Email або телефон" autoComplete="username" value={form.email} onChange={(e) => update("email", e.target.value)} />
+              {emailTab === "signup" && (
+                <input className="input" placeholder="Телефон" autoComplete="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+              )}
+              <input className="input" type="password" placeholder="Пароль" autoComplete={emailTab === "login" ? "current-password" : "new-password"} value={form.password} onChange={(e) => update("password", e.target.value)} />
+              {error && <div className="field-error">{error}</div>}
+              <button className="btn btn-primary" onClick={submitEmail} disabled={loading}>
+                {loading ? "Зачекайте…" : emailTab === "login" ? "Увійти" : "Зареєструватись"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {method === "telegram" && (
+          <div style={{ display: "grid", gap: 16, textAlign: "center" }}>
+            <h2 style={{ fontSize: 22 }}>Вхід через Telegram</h2>
+            {TG_BOT ? (
+              <>
+                <p style={{ color: "var(--ink-500)", fontSize: 14 }}>Натисніть кнопку нижче, щоб підтвердити вхід через Telegram.</p>
+                <div id="tg-widget" style={{ display: "flex", justifyContent: "center", minHeight: 48 }} />
+                {error && <div className="field-error">{error}</div>}
+                {loading && <div style={{ color: "var(--ink-400)", fontSize: 14 }}>Авторизація…</div>}
+              </>
+            ) : (
+              <div style={{ color: "var(--ink-400)", fontSize: 14, padding: "24px 0" }}>
+                Telegram авторизацію не налаштовано.<br />Додайте <code>VITE_TG_BOT_USERNAME</code> у змінні середовища.
+              </div>
+            )}
           </div>
-        ) : (
-          <div style={{ display: "grid", gap: 14 }}>
-            <h2 style={{ fontSize: 22 }}>Створення акаунта</h2>
-            <input
-              className="input"
-              placeholder="Ім'я"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-            />
-            <input
-              className="input"
-              placeholder="Email"
-              value={form.email}
-              onChange={(e) => update("email", e.target.value)}
-            />
-            <input
-              className="input"
-              placeholder="Телефон"
-              value={form.phone}
-              onChange={(e) => update("phone", e.target.value)}
-            />
-            <input
-              className="input"
-              type="password"
-              placeholder="Пароль"
-              value={form.password}
-              onChange={(e) => update("password", e.target.value)}
-            />
+        )}
+
+        {method === "viber" && (
+          <div style={{ display: "grid", gap: 16 }}>
+            <h2 style={{ fontSize: 22 }}>Вхід через Viber</h2>
+            <div style={{ background: "var(--ink-50)", borderRadius: 10, padding: 16, fontSize: 14, color: "var(--ink-600)", lineHeight: 1.6 }}>
+              <strong>Крок 1:</strong> Відкрийте бот у Viber та надішліть <code>/start</code>
+              <div style={{ marginTop: 10 }}>
+                <a
+                  href={`viber://pa?chatURI=${VIBER_BOT}`}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: "inline-flex", textDecoration: "none" }}
+                >
+                  Відкрити @{VIBER_BOT} у Viber
+                </a>
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ fontSize: 13, color: "var(--ink-500)" }}>Крок 2: введіть 6-значний код з бота</label>
+              <input
+                className="input"
+                placeholder="123456"
+                inputMode="numeric"
+                maxLength={6}
+                value={viberCode}
+                onChange={(e) => setViberCode(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
             {error && <div className="field-error">{error}</div>}
-            <button className="btn btn-primary" onClick={submit}>
-              Зареєструватись
+            <button className="btn btn-primary" onClick={submitViber} disabled={loading || viberCode.length < 6}>
+              {loading ? "Перевірка…" : "Підтвердити"}
             </button>
           </div>
         )}
@@ -1039,6 +1081,14 @@ export default function App() {
   const [showAdminLogin, setShowAdminLogin] = uS(false);
   const [legalKind, setLegalKind] = uS(null);
   const [toast, setToast] = uS(null);
+
+  // Restore session from httpOnly refresh cookie on mount
+  uE(() => {
+    fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.user) store.setCurrentUser(data.user); })
+      .catch(() => {});
+  }, []);
 
   const serviceSlugById = uM(
     () =>
@@ -1370,20 +1420,11 @@ export default function App() {
       {showLogin && (
         <LoginModal
           onClose={() => setShowLogin(false)}
-          onLogin={(data) => {
-            if (!store.login(data)) return false;
+          onSuccess={(user) => {
+            store.setCurrentUser(user);
             setShowLogin(false);
             go("profile");
             showToast("Ласкаво просимо!");
-            return true;
-          }}
-          onRegister={(data) => {
-            const result = store.register(data);
-            if (!result?.ok) return result;
-            setShowLogin(false);
-            go("profile");
-            showToast("Акаунт створено!");
-            return result;
           }}
         />
       )}
