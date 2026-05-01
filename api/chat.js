@@ -49,24 +49,37 @@ export default async function handler(req, res) {
       .from('conversation_participants')
       .select('conversation_id, last_read_at, last_read_message_id')
       .eq('user_id', user.id);
-    if (myErr) return err(res, 500, 'Не вдалося завантажити чати');
+    if (myErr) {
+      const msg = String(myErr.message || '');
+      if (msg.includes('conversation_participants')) {
+        return err(res, 500, 'Чат ще не ініціалізовано в БД. Застосуйте supabase/schema.sql');
+      }
+      return err(res, 500, 'Не вдалося завантажити чати');
+    }
 
     const conversationIds = (myRows || []).map((r) => r.conversation_id);
     if (!conversationIds.length) return res.status(200).json({ conversations: [] });
 
     const [convResp, partResp, msgResp] = await Promise.all([
       db.from('conversations').select('id, title, created_by, created_at, updated_at').in('id', conversationIds).order('updated_at', { ascending: false }),
-      db.from('conversation_participants').select('conversation_id, user_id, users(id, name, role)').in('conversation_id', conversationIds),
+      db.from('conversation_participants').select('conversation_id, user_id').in('conversation_id', conversationIds),
       db.from('messages').select('id, conversation_id, sender_user_id, text, attachments, created_at').in('conversation_id', conversationIds).order('created_at', { ascending: false }).limit(500),
     ]);
 
     if (convResp.error || partResp.error || msgResp.error) return err(res, 500, 'Не вдалося завантажити чати');
 
+    const userIds = Array.from(new Set((partResp.data || []).map((row) => row.user_id).filter(Boolean)));
+    const usersById = new Map();
+    if (userIds.length) {
+      const { data: userRows } = await db.from('users').select('id, name, role').in('id', userIds);
+      for (const u of userRows || []) usersById.set(u.id, u);
+    }
+
     const myMap = new Map((myRows || []).map((r) => [r.conversation_id, r]));
     const partsByConv = new Map();
     for (const row of partResp.data || []) {
       const arr = partsByConv.get(row.conversation_id) || [];
-      arr.push(row.users);
+      arr.push(usersById.get(row.user_id) || null);
       partsByConv.set(row.conversation_id, arr);
     }
 
