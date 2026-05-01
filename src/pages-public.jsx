@@ -16,7 +16,7 @@ export const HomePage = ({ go, openBooking }) => {
           <div className="fade-up">
             <h1 className="home-hero-title" style={{fontSize:64, lineHeight:1.02, letterSpacing:'-0.035em', marginBottom:20}}>
               Уважна ветеринарія<br/>
-              <span style={{color:'var(--teal-600)'}}>для тих, кого ви любите.</span>
+              <span style={{color:'var(--teal-600)'}}>для тих, кого ви любите</span>
             </h1>
             <p className="home-hero-lead" style={{fontSize:18, color:'var(--ink-600)', maxWidth:520, marginBottom:32}}>
               Сучасна клініка у Львові з онлайн-записом, прозорими цінами та власним кабінетом, де зберігається вся медична історія вашого улюбленця.

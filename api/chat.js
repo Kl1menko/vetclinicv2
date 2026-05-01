@@ -178,13 +178,25 @@ export default async function handler(req, res) {
     if (!isMember) return err(res, 403, 'Немає доступу до чату');
 
     const [msgResp, partResp] = await Promise.all([
-      db.from('messages').select('id, conversation_id, sender_user_id, text, attachments, created_at, users(id, name, role)').eq('conversation_id', conversationId).order('created_at', { ascending: true }).limit(500),
+      db.from('messages').select('id, conversation_id, sender_user_id, text, attachments, created_at').eq('conversation_id', conversationId).order('created_at', { ascending: true }).limit(500),
       db.from('conversation_participants').select('user_id, last_read_at').eq('conversation_id', conversationId),
     ]);
     if (msgResp.error || partResp.error) return err(res, 500, 'Не вдалося завантажити повідомлення');
 
+    const senderIds = Array.from(new Set((msgResp.data || []).map((m) => m.sender_user_id).filter(Boolean)));
+    const usersById = new Map();
+    if (senderIds.length) {
+      const { data: senderRows } = await db.from('users').select('id, name, role').in('id', senderIds);
+      for (const row of senderRows || []) usersById.set(row.id, row);
+    }
+
+    const messages = (msgResp.data || []).map((m) => ({
+      ...m,
+      users: usersById.get(m.sender_user_id) || null,
+    }));
+
     const otherReadAts = (partResp.data || []).filter((row) => row.user_id !== user.id && row.last_read_at).map((row) => row.last_read_at).sort((a, b) => String(b).localeCompare(String(a)));
-    return res.status(200).json({ messages: msgResp.data || [], readMeta: { lastReadAtByOthers: otherReadAts[0] || null } });
+    return res.status(200).json({ messages, readMeta: { lastReadAtByOthers: otherReadAts[0] || null } });
   }
 
   if (req.method === 'POST' && action === 'messages') {
