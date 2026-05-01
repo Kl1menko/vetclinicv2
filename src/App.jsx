@@ -921,17 +921,29 @@ const LoginModal = ({ onClose, onSuccess }) => {
               {/* Step 1 */}
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                 <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>1</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Відкрийте бот і надішліть <code style={{ background: "var(--ink-100)", padding: "1px 5px", borderRadius: 4 }}>/start</code></div>
+                <div style={{ flex: 1, display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>Відкрийте бот і надішліть команду</div>
+                  {/* Copyable /start */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--ink-50)", border: "1px solid var(--ink-100)", borderRadius: 8, padding: "8px 12px" }}>
+                    <code style={{ flex: 1, fontSize: 15, fontWeight: 700, letterSpacing: "0.03em" }}>/start</code>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText("/start")}
+                      style={{ border: 0, background: "transparent", cursor: "pointer", color: "var(--teal-600)", fontSize: 12, fontWeight: 600, padding: "2px 6px", borderRadius: 6 }}
+                    >копіювати</button>
+                  </div>
                   <a
                     href={`https://t.me/${TG_BOT || "ultravet_bot"}`}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, background: "linear-gradient(135deg,#2AABEE,#229ED9)", color: "#fff", fontWeight: 600, fontSize: 14, textDecoration: "none" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, background: "linear-gradient(135deg,#2AABEE,#229ED9)", color: "#fff", fontWeight: 600, fontSize: 14, textDecoration: "none", width: "fit-content" }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.69 7.96c-.12.58-.48.72-.96.45l-2.64-1.95-1.27 1.23c-.14.14-.26.26-.54.26l.19-2.72 4.94-4.47c.22-.19-.05-.3-.33-.11L7.9 14.49l-2.57-.8c-.56-.18-.57-.56.12-.82l10.02-3.86c.47-.17.88.11.17.79z"/></svg>
-                    @{TG_BOT || "ultravet_bot"}
+                    Відкрити @{TG_BOT || "ultravet_bot"}
                   </a>
+                  <div style={{ fontSize: 12, color: "var(--ink-400)" }}>
+                    Якщо бот вже відкритий — просто надішліть <strong>/start</strong> у чат повторно
+                  </div>
                 </div>
               </div>
 
