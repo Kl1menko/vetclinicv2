@@ -113,7 +113,7 @@ const dashboardSeries = (appointments, period) => {
   return { points, total };
 };
 
-export const AdminLayout = ({ current, setRoute, role, setRole, roleOptions = [], exitAdmin, children, search, setSearch, allowedRoutes = null }) => {
+export const AdminLayout = ({ current, setRoute, role, setRole, roleOptions = [], canPreviewRoles = false, exitAdmin, children, search, setSearch, allowedRoutes = null }) => {
   const { appointments, messages, pets, updateMessage } = useStore();
   const [showNotifications, setShowNotifications] = uA(false);
   const unreadMessages = messages.filter(m => !m.readAt);
@@ -200,12 +200,31 @@ export const AdminLayout = ({ current, setRoute, role, setRole, roleOptions = []
             <div style={{fontSize:10, color:'#8aa6a4', textTransform:'uppercase', letterSpacing:'0.06em'}}>Admin</div>
           </div>
         </div>
-        <div style={{padding:'10px 12px', background:'rgba(255,255,255,0.03)', borderRadius:10, marginBottom:18, fontSize:12}}>
-          <div style={{color:'#8aa6a4', marginBottom:6}}>Роль</div>
-          <select value={role} onChange={e=>setRole(e.target.value)} style={{width:'100%', background:'transparent', color:'#fff', border:'1px solid rgba(255,255,255,0.1)', borderRadius:8, padding:'6px 8px', fontSize:13}}>
-            {(roleOptions || []).map(name => <option key={name} value={name}>{name}</option>)}
-          </select>
+        {/* Role badge — always visible */}
+        <div style={{padding:'10px 12px', background:'rgba(255,255,255,0.04)', borderRadius:10, marginBottom:4, display:'flex', alignItems:'center', gap:10}}>
+          <div style={{width:28, height:28, borderRadius:8, background:'rgba(14,122,120,0.25)', color:'var(--teal-400)', display:'grid', placeItems:'center', flexShrink:0}}>
+            <Icon name="shield" size={14}/>
+          </div>
+          <div style={{flex:1, minWidth:0}}>
+            <div style={{fontSize:11, color:'#5a7877', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:1}}>Сесія</div>
+            <div style={{fontSize:13, color:'#fff', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{role}</div>
+          </div>
         </div>
+
+        {/* Preview mode — only for admins with role management rights */}
+        {canPreviewRoles && (
+          <div style={{padding:'8px 12px', marginBottom:14}}>
+            <div style={{fontSize:10, color:'#5a7877', fontWeight:600, textTransform:'uppercase', letterSpacing:'.05em', marginBottom:5}}>
+              Перегляд як роль
+            </div>
+            <select value={role} onChange={e=>setRole(e.target.value)}
+              style={{width:'100%', background:'rgba(255,255,255,0.05)', color:'#cfdcdb', border:'1px solid rgba(255,255,255,0.08)', borderRadius:8, padding:'6px 10px', fontSize:12, cursor:'pointer'}}>
+              {(roleOptions || []).map(name => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </div>
+        )}
+        {!canPreviewRoles && <div style={{marginBottom:14}}/>}
+
         <nav style={{display:'flex', flexDirection:'column', gap:2}}>
           {items.filter(it => !allowedRoutes || allowedRoutes.includes(it.k)).map(it => (
             <button key={it.k} onClick={()=>setRoute(it.k)}
@@ -219,8 +238,8 @@ export const AdminLayout = ({ current, setRoute, role, setRole, roleOptions = []
             </button>
           ))}
         </nav>
-        <button onClick={exitAdmin} style={{display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:9, border:0, background:'transparent', color:'#cfdcdb', fontSize:13, cursor:'pointer', marginTop:'auto'}}>
-          <Icon name="logout" size={16}/> Вийти на сайт
+        <button onClick={exitAdmin} style={{display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:9, border:0, background:'transparent', color:'#8aa6a4', fontSize:13, cursor:'pointer', marginTop:'auto', paddingTop:16, borderTop:'1px solid rgba(255,255,255,0.06)'}}>
+          <Icon name="logout" size={14}/> Вийти на сайт
         </button>
       </aside>
       <main>

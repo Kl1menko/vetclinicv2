@@ -1040,46 +1040,64 @@ const LoginModal = ({ onClose, onSuccess }) => {
 };
 
 const AdminLoginModal = ({ onClose, onConfirm }) => {
+  const { roles } = useStore();
   const [password, setPassword] = uS("");
+  const [selectedRole, setSelectedRole] = uS((roles || [])[0]?.name || "Адміністратор");
   const [error, setError] = uS("");
   const submit = () => {
     setError("");
-    if (!onConfirm(password)) setError("Невірний пароль адміністратора");
+    if (!onConfirm(password, selectedRole)) setError("Невірний пароль");
   };
+  const roleColor = { teal: "var(--teal-600)", coral: "var(--coral-500)", amber: "var(--amber-500)", violet: "var(--violet-500)", rose: "#e64561", green: "var(--green-500)" };
   return (
     <div className="backdrop" onClick={onClose}>
-      <div
-        className="card pop"
-        onClick={(e) => e.stopPropagation()}
-        style={{ padding: 28, maxWidth: 380, width: "100%" }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--teal-50)", color: "var(--teal-700)", display: "grid", placeItems: "center" }}>
-            <Icon name="shield" size={18} />
+      <div className="card pop" onClick={(e) => e.stopPropagation()} style={{ padding: 32, maxWidth: 400, width: "100%" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--teal-50)", color: "var(--teal-700)", display: "grid", placeItems: "center" }}>
+            <Icon name="shield" size={20} />
           </div>
           <div>
-            <h2 style={{ fontSize: 22 }}>Вхід в адмінку</h2>
-            <div style={{ fontSize: 13, color: "var(--ink-500)" }}>
-              Введіть пароль адміністратора.
-            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700 }}>Вхід в адмінку</h2>
+            <div style={{ fontSize: 13, color: "var(--ink-500)" }}>UltraVet · Панель управління</div>
           </div>
         </div>
-        <div style={{ display: "grid", gap: 12 }}>
-          <input
-            className="input"
-            type="password"
-            placeholder="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") submit();
-            }}
-            autoFocus
-          />
+
+        <div style={{ display: "grid", gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-500)", display: "block", marginBottom: 8 }}>Ваша роль</label>
+            <div style={{ display: "grid", gap: 8 }}>
+              {(roles || []).map(r => {
+                const active = selectedRole === r.name;
+                const c = roleColor[r.c] || "var(--teal-600)";
+                return (
+                  <button key={r.name} type="button" onClick={() => setSelectedRole(r.name)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 10, border: `2px solid ${active ? c : "var(--ink-100)"}`, background: active ? `${c}12` : "transparent", cursor: "pointer", textAlign: "left", transition: "border-color .15s, background .15s" }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: c, flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-900)" }}>{r.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--ink-400)", marginTop: 1 }}>
+                        {r.perms?.includes("Усі права") ? "Повний доступ" : `${r.perms?.length || 0} дозволів`}
+                      </div>
+                    </div>
+                    {active && <Icon name="check" size={15} color={c} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-500)", display: "block", marginBottom: 6 }}>Пароль</label>
+            <input className="input" type="password" placeholder="Пароль адміністратора" value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") submit(); }} autoFocus />
+          </div>
+
           {error && <div className="field-error">{error}</div>}
+
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button className="btn btn-ghost" onClick={onClose}>Скасувати</button>
-            <button className="btn btn-primary" onClick={submit}>Увійти</button>
+            <button className="btn btn-primary" onClick={submit}>Увійти як {selectedRole}</button>
           </div>
         </div>
       </div>
@@ -1431,9 +1449,10 @@ export default function App() {
     setShowAdminLogin(true);
   };
 
-  const confirmAdmin = (password) => {
+  const confirmAdmin = (password, role) => {
     if (password !== (store.settings?.adminPassword || "admin")) return false;
     window.sessionStorage.setItem("ultravet:admin-authed", "1");
+    if (role) setAdminRole(role);
     setShowAdminLogin(false);
     setAdmin(true);
     return true;
@@ -1560,6 +1579,7 @@ export default function App() {
           role={adminRole}
           setRole={setAdminRole}
           roleOptions={(store.roles || []).map(r => r.name)}
+          canPreviewRoles={hasPermission('Управління ролями') || hasPermission('Усі права')}
           exitAdmin={() => setAdmin(false)}
           search={adminSearch}
           setSearch={setAdminSearch}
