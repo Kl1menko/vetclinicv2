@@ -41,7 +41,6 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [contacts, setContacts] = useState([]);
-  const [selectedContact, setSelectedContact] = useState('');
   const [text, setText] = useState('');
   const [files, setFiles] = useState([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
@@ -292,20 +291,22 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
     return undefined;
   }, [text, activeId, user.id]);
 
-  const onCreateConversation = async () => {
-    if (!selectedContact) {
-      showToast('Оберіть користувача для чату');
+  const openOrCreateConversation = async (contactId) => {
+    const targetId = String(contactId || '').trim();
+    if (!targetId) return;
+    const existing = conversations.find((c) => c.participants?.some((p) => p.id === targetId));
+    if (existing?.id) {
+      setActiveId(existing.id);
       return;
     }
     try {
       const data = await api('/api/chat?action=conversations', {
         method: 'POST',
-        body: JSON.stringify({ participantUserId: selectedContact }),
+        body: JSON.stringify({ participantUserId: targetId }),
       });
       const newId = data.conversation?.id;
       await loadConversations();
       if (newId) setActiveId(newId);
-      showToast('Чат створено');
     } catch (e) {
       showToast(e.message || 'Не вдалося створити чат');
     }
@@ -372,16 +373,21 @@ export default function ChatPanel({ store, user, showToast = () => {} }) {
       <div className="profile-chat-layout">
         <aside className="profile-chat-aside">
           <div style={{ padding: 12, borderBottom: '1px solid var(--ink-100)', display: 'grid', gap: 8 }}>
-            <div style={{ fontSize: 11, color: 'var(--ink-500)' }}>
-              {hasRealtimeConfig ? 'Live: увімкнено' : 'Live: fallback (polling)'}
-            </div>
-            <select className="input" value={selectedContact} onChange={(e) => setSelectedContact(e.target.value)}>
-              <option value="">Новий чат…</option>
-              {contacts.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} · {roleLabel(c.role)}</option>
+            <div style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600 }}>Кому написати</div>
+            <div style={{ display: 'grid', gap: 6, maxHeight: 180, overflowY: 'auto' }}>
+              {contacts.length === 0 ? (
+                <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>Немає доступних контактів</div>
+              ) : contacts.map((c) => (
+                <button
+                  key={c.id}
+                  className="btn btn-sm btn-outline"
+                  style={{ justifyContent: 'flex-start' }}
+                  onClick={() => openOrCreateConversation(c.id)}
+                >
+                  <Icon name="user" size={13} /> {c.name} · {roleLabel(c.role)}
+                </button>
               ))}
-            </select>
-            <button className="btn btn-sm btn-outline" onClick={onCreateConversation}><Icon name="plus" size={13} /> Створити чат</button>
+            </div>
           </div>
 
           <div style={{ maxHeight: 420, overflowY: 'auto' }}>

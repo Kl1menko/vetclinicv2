@@ -37,31 +37,35 @@
   - `src/styles.css` — стилі, CSS-змінні палітри, мобільні медіа-запити.
   - `src/logo-ultravet.svg` — оригінальний SVG бренду.
 
-### Бекенд (`api/`)
+### Бекенд (`api/`) — актуально
 ```
 api/
-├── _lib/
-│   ├── db.js           — Supabase client (singleton)
-│   ├── jwt.js          — sign/verify access + refresh tokens (jose)
-│   └── hash.js         — bcrypt helpers (bcryptjs)
 ├── auth/
-│   ├── register.js     — POST /api/auth/register → { accessToken, user, isNew }
-│   ├── login.js        — POST /api/auth/login → { accessToken, user } + Set-Cookie
-│   ├── refresh.js      — POST /api/auth/refresh (httpOnly cookie) → { accessToken, user }
-│   │                     DELETE /api/auth/refresh → logout (clear cookie)
-│   ├── telegram.js     — POST /api/auth/telegram (HMAC-SHA256 verify)
-│   └── viber-verify.js — POST /api/auth/viber-verify (OTP check)
-├── users/
-│   └── me.js           — PATCH /api/users/me (Bearer JWT) → оновлює name/email/phone у Supabase
+│   ├── register.js
+│   ├── login.js
+│   ├── refresh.js
+│   ├── telegram.js
+│   ├── telegram-verify.js
+│   ├── viber-request.js
+│   └── viber-verify.js
+├── chat.js                 — чати/повідомлення/файли/контакти
+├── pets.js                 — GET/POST/PATCH/DELETE тварин (single endpoint)
+├── users/me.js             — PATCH + DELETE профілю
 └── webhooks/
-    └── viber.js        — POST /api/webhooks/viber (Viber Bot events + OTP send)
+    ├── telegram.js
+    └── viber.js
 ```
+Примітка: через ліміт Vercel Hobby тримаємо не більше 12 serverless functions.
 
-### База даних (Supabase / `supabase/schema.sql`)
+### База даних (Supabase / `supabase/schema.sql`) — актуально
 ```sql
-users (id, name, email, phone, password_hash, telegram_id, telegram_username, viber_id, role, created_at)
-refresh_tokens (id, user_id, token_hash, expires_at, created_at)
-otp_codes (id, viber_id, code_hash, expires_at, attempts, created_at)
+users
+refresh_tokens
+otp_codes
+pets
+conversations
+conversation_participants
+messages
 ```
 
 ### Auth-токени
@@ -336,7 +340,54 @@ otp_codes (id, viber_id, code_hash, expires_at, attempts, created_at)
 - На бекенді: rate limit, anti-bruteforce, логи аудиту.
 
 ### Статус
-- ⏳ Заплановано, реалізація ще не починалась (на поточний момент).
+- 🟡 Частково реалізовано: email/password, Telegram/Viber verify, refresh-сесії, chat API.
+- ⏳ Далі: повна серверна синхронізація всіх клінічних даних (зараз частина ще в local store).
+
+### 2026-05-01 — updates (auth/profile/chat/deploy/clinical)
+
+- **Vercel deploy fix (Hobby limit 12):**
+  - було 14 functions → зведено до 12.
+  - `api/pets/index.js` + `api/pets/[id].js` обʼєднано в `api/pets.js`.
+  - видалено `api/setup/telegram.js` (технічний endpoint).
+
+- **Pets cross-device sync (profile):**
+  - ProfilePage читає тварин із `/api/pets` (за токеном) з fallback на локальні дані.
+  - Збереження тварин через `POST/PATCH /api/pets`.
+  - Додано SQL-таблицю `pets` + індекси + RLS у `supabase/schema.sql`.
+
+- **SQL compatibility fix:**
+  - `ADD CONSTRAINT IF NOT EXISTS` замінено на `DO $$ ... IF NOT EXISTS (...) THEN ALTER TABLE ... END $$;`.
+
+- **Chat fixes:**
+  - `ChatPanel` отримав `ensureAccessToken()` + auto-refresh/retry при `401`.
+  - Виправлено кейс порожнього списку "кому написати":
+    - посилено bootstrap staff у `api/chat.js`,
+    - fallback гарантує `Реєстратура UltraVet`.
+
+- **Profile/account actions:**
+  - Додано `DELETE /api/users/me`.
+  - У Profile → "Мої дані" додано кнопку **Видалити профіль** поруч із logout.
+  - Після видалення: clear session + redirect на home.
+
+- **Signup/onboarding flow:**
+  - Email signup тепер запускає той самий onboarding, що Telegram/Viber (`isNew + accessToken`).
+  - У signup формі: перше поле — тільки Email, друге — Телефон (`+380 67 123 45 67` placeholder).
+
+- **Header booking behavior:**
+  - Кнопка "Записатись" у header тепер відкриває стандартну сторінку `booking`, не quick modal.
+
+- **Mobile color bug fix (iOS):**
+  - Додано `button { color: inherit; }` у `styles.css` — заголовки послуг/статей більше не стають синіми на мобільному.
+
+- **Clinical intake workflow upgrade (admin + owner profile):**
+  - Розширено медичні поля прийому:
+    - `clinicalFindings`, `medicationSchedule`, `testsOrdered`,
+    - `followUpDate`, `followUpPlan`, `dischargeSummary`.
+  - У режимі "Прийом тварини" додано відповідні поля + розширені формати вкладень
+    (`.pdf,image/*,.dcm,.dicom,.nii,.nii.gz,.zip`).
+  - Ці дані відображаються:
+    - у `AdminPets` медичній історії,
+    - у кабінеті власника (`ProfilePage` → "Історія візитів" для completed).
 
 ### 2026-04-30 — updates (UI/UX + admin + booking)
 
