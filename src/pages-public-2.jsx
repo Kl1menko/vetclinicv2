@@ -790,14 +790,30 @@ const PetFormModal = ({ form, onClose, onSave }) => (
 
 export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
   const store = useStore();
-  const { currentUser: user, pets, appointments, messages, cancelAppointment, savePet, saveClient } = store;
+  const { currentUser: user, pets, appointments, messages, cancelAppointment, savePet, saveClient, sessionChecked } = store;
   const [tab, setTab] = uS2('upcoming');
   const [petFormData, setPetFormData] = uS2(null);
   const [editProfile, setEditProfile] = uS2(false);
   const [profileDraft, setProfileDraft] = uS2({});
   const [savingProfile, setSavingProfile] = uS2(false);
 
-  uE2(() => { if (!user) openLogin?.(); }, [user]);
+  uE2(() => {
+    if (sessionChecked && !user) openLogin?.();
+  }, [sessionChecked, user]);
+
+  // Waiting for session restore — show skeleton
+  if (!sessionChecked) {
+    return (
+      <div data-screen-label="Profile">
+        <div style={{ minHeight: '60vh', display: 'grid', placeItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, color: 'var(--ink-400)' }}>
+            <div style={{ width: 40, height: 40, border: '3px solid var(--teal-200)', borderTopColor: 'var(--teal-600)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: 14 }}>Завантаження…</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

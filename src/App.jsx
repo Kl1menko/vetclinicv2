@@ -1321,7 +1321,8 @@ export default function App() {
     fetch("/api/auth/refresh", { method: "POST", credentials: "include" })
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data?.user) { store.setCurrentUser(data.user); store.setAccessToken(data.accessToken); } })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => store.markSessionChecked());
   }, []);
 
   const serviceSlugById = uM(

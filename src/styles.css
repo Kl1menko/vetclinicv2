@@ -223,6 +223,7 @@ p { margin: 0; text-wrap: pretty; }
 .pop { animation: pop .2s ease both; }
 
 @keyframes slideRight { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 .slide-right { animation: slideRight .25s ease both; }
 
 /* Modal backdrop */

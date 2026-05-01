@@ -192,9 +192,11 @@ const upsert = (items, item) => {
 };
 
 let _accessToken = null;
+let _sessionChecked = false;
 
 export const AppStoreProvider = ({ children }) => {
   const [state, setState] = useState(readInitialState);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
     try {
@@ -207,6 +209,7 @@ export const AppStoreProvider = ({ children }) => {
     setCurrentUser: (user) => setState(s => ({ ...s, currentUser: user || null })),
     setAccessToken: (token) => { _accessToken = token || null; },
     getAccessToken: () => _accessToken,
+    markSessionChecked: () => setSessionChecked(true),
     logout: () => {
       fetch('/api/auth/refresh', { method: 'DELETE', credentials: 'include' }).catch(() => {});
       _accessToken = null;
@@ -434,7 +437,7 @@ export const AppStoreProvider = ({ children }) => {
     },
   }), [state]);
 
-  return <StoreContext.Provider value={{ ...state, ...actions }}>{children}</StoreContext.Provider>;
+  return <StoreContext.Provider value={{ ...state, ...actions, sessionChecked }}>{children}</StoreContext.Provider>;
 };
 
 export const useStore = () => {
