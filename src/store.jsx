@@ -321,7 +321,14 @@ export const AppStoreProvider = ({ children }) => {
         (clean(client.phone) && clean(c.phone) === clean(client.phone))
       ));
       if (duplicate) return { ok: false, error: 'Клієнт з таким телефоном або email вже є в базі.' };
-      const nextClient = client.id ? client : { ...client, id: uid('c'), since: currentYear(), visits: 0, pets: 0, status: 'new' };
+      const normalized = {
+        ...client,
+        since: clean(client.since) || currentYear(),
+        status: ['active', 'new'].includes(client.status) ? client.status : 'new',
+        pets: toNum(client.pets, 0),
+        visits: toNum(client.visits, 0),
+      };
+      const nextClient = client.id ? normalized : { ...normalized, id: uid('c') };
       setState(s => {
         const currentUser = s.currentUser?.id === nextClient.id ? { ...s.currentUser, ...nextClient } : s.currentUser;
         return withClientStats({ ...s, clients: upsert(s.clients, nextClient), currentUser });

@@ -2,6 +2,7 @@
 import React, { useState as uS2, useMemo as uM2, useEffect as uE2 } from 'react';
 import { Icon, PetIllustration, Avatar, StatusPill, Stars, calcPetAge, petSpeciesColor, petSpeciesKind } from './components.jsx';
 import { useStore } from './store.jsx';
+import ChatPanel from './chat-panel.jsx';
 
 const ArticleCoverImage = ({ src, alt, height = 180, radius = 0, className = '' }) => {
   const [failed, setFailed] = uS2(false);
@@ -766,10 +767,10 @@ const PetFormModal = ({ form, onClose, onSave }) => (
             <input className="input" placeholder="Мейн-кун" value={form.breed || ''} onChange={e => form._set('breed', e.target.value)} />
           </div>
           <div>
-            <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
-              Дата народження
-              {form.birthDate && <span style={{ fontWeight: 400, marginLeft: 6, color: 'var(--teal-600)' }}>{calcPetAge(form.birthDate)}</span>}
-            </label>
+            <div className="pet-birth-head" style={{ marginBottom: 6 }}>
+              <label style={{ fontSize: 12, color: 'var(--ink-500)', fontWeight: 600, display: 'block' }}>Дата народження</label>
+              {form.birthDate && <span className="chip chip-violet pet-age-chip">Вік: {calcPetAge(form.birthDate)}</span>}
+            </div>
             <input className="input" type="date" max={new Date().toISOString().slice(0,10)} value={form.birthDate || ''} onChange={e => form._set('birthDate', e.target.value)} />
           </div>
           <div>
@@ -843,6 +844,7 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
   const NAV = [
     { k: 'upcoming', l: 'Записи', i: 'calendar', badge: upcoming.length || null },
     { k: 'pets', l: 'Тварини', i: 'paw', badge: myPets.length || null },
+    { k: 'chat', l: 'Чат', i: 'mail' },
     { k: 'history', l: 'Історія', i: 'activity' },
     { k: 'docs', l: 'Документи', i: 'book' },
     { k: 'settings', l: 'Дані', i: 'settings' },
@@ -1061,6 +1063,14 @@ export const ProfilePage = ({ go, openBooking, openLogin, showToast }) => {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── History ── */}
+            {tab === 'chat' && (
+              <div>
+                <h2 className="profile-content-title" style={{ marginBottom: 16 }}>Чат із клінікою</h2>
+                <ChatPanel store={store} user={user} showToast={showToast} />
               </div>
             )}
 

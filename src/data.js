@@ -153,6 +153,7 @@ export const CLIENTS = [
   { id: 'c5', name: 'Марія Стасів', phone: '+380 50 567 89 01', email: 'maria.s@example.com', pets: 3, visits: 22, since: '2021', status: 'active' },
   { id: 'c6', name: 'Дмитро Литвин', phone: '+380 63 678 90 12', email: 'dmytro.l@example.com', pets: 1, visits: 3, since: '2025', status: 'new' },
   { id: 'c7', name: 'Софія Бойко', phone: '+380 67 789 01 23', email: 'sofia.b@example.com', pets: 1, visits: 6, since: '2024', status: 'active' },
+  { id: 'c8', name: 'Віталій Клименко', phone: '+380976773625', email: 'test@mail.com', pets: 1, visits: 0, since: '2026', status: 'new' },
 ];
 
 export const PETS = [

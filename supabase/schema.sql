@@ -64,3 +64,52 @@ ALTER TABLE refresh_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE otp_codes      ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses RLS automatically — no policies needed for server-side use.
+
+-- ─── Chat (clients ↔ doctors/staff) ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS conversations (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_by  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title       TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS conversation_participants (
+  conversation_id      UUID        NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id              UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  last_read_at         TIMESTAMPTZ,
+  last_read_message_id UUID,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (conversation_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID        NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_user_id  UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text            TEXT,
+  attachments     JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT message_has_payload CHECK (
+    (text IS NOT NULL AND length(trim(text)) > 0)
+    OR jsonb_array_length(attachments) > 0
+  )
+);
+
+ALTER TABLE conversation_participants
+  ADD CONSTRAINT IF NOT EXISTS conversation_participants_last_read_message_fkey
+  FOREIGN KEY (last_read_message_id) REFERENCES messages(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS conversations_updated_idx ON conversations (updated_at DESC);
+CREATE INDEX IF NOT EXISTS conv_participants_user_idx ON conversation_participants (user_id);
+CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages (conversation_id, created_at);
+CREATE INDEX IF NOT EXISTS messages_sender_idx ON messages (sender_user_id, created_at);
+
+ALTER TABLE conversations              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_participants  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages                   ENABLE ROW LEVEL SECURITY;
+
+-- Supabase storage bucket for chat files (create once in SQL editor):
+-- INSERT INTO storage.buckets (id, name, public)
+-- VALUES ('chat-files', 'chat-files', false)
+-- ON CONFLICT (id) DO NOTHING;

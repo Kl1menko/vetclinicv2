@@ -1039,12 +1039,15 @@ export const AdminClients = ({ search = '', notify = () => {}, hasPermission = (
         {visible.map((c,i)=>(
           <div key={c.id} style={{display:'grid', gridTemplateColumns:clientTableCols, gap:12, padding:'12px 18px', alignItems:'center', borderTop: i?'1px solid rgba(255,255,255,0.04)':0}}>
             <Avatar name={c.name} size={36}/>
-            <div style={{minWidth:0}}><div style={{color:'#fff', fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{c.name}</div><div style={{color:'#8aa6a4', fontSize:11}}>з {c.since} року</div></div>
+            <div style={{minWidth:0}}>
+              <div style={{color:'#fff', fontSize:13, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{c.name}</div>
+              <div style={{color:'#8aa6a4', fontSize:11}}>з {String(c.since || new Date().getFullYear())} року</div>
+            </div>
             <div style={{color:'#cfdcdb', fontSize:12, fontFamily:'var(--font-mono)'}}>{c.phone}</div>
             <div style={{color:'#cfdcdb', fontSize:12, minWidth:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{c.email}</div>
             <div style={{color:'#fff', fontSize:13, fontWeight:600, textAlign:'center'}}>{c.pets}</div>
             <div style={{color:'#fff', fontSize:13, fontWeight:600, textAlign:'center'}}>{c.visits}</div>
-            <div style={{display:'flex', justifyContent:'center'}}><StatusPill status={c.status} compact/></div>
+            <div style={{display:'flex', justifyContent:'center'}}><StatusPill status={c.status || 'new'} compact/></div>
             <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
               <button disabled={!hasPermission('Управління користувачами')} onClick={()=>setForm(c)} style={{width:28, height:28, border:0, borderRadius:6, background:'rgba(255,255,255,0.05)', color:'#cfdcdb', cursor:hasPermission('Управління користувачами')?'pointer':'not-allowed', opacity:hasPermission('Управління користувачами')?1:0.45, display:'grid', placeItems:'center'}}><Icon name="edit" size={14}/></button>
               <button disabled={!hasPermission('Управління користувачами')} onClick={()=>ask(`Видалити клієнта «${c.name}»?`, () => {

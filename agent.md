@@ -1,6 +1,6 @@
 # UltraVet — план розробки
 
-Проєкт: React 18 + Vite, без бекенда. Все на клієнті, дані в `localStorage` через центральний `AppStore` (Context API). Демо-сайт ветклініки **UltraVet** (Львів, вул. Околична, 10).
+Проєкт: React 18 + Vite. Фронтенд — Context API + `localStorage` (клієнтські дані). Auth-бекенд — Vercel Functions + Supabase PostgreSQL + JWT/refresh cookie. Демо-сайт ветклініки **UltraVet** (Львів, вул. Околична, 10).
 
 ## Бренд (фіксований)
 
@@ -23,18 +23,51 @@
 
 ## Архітектура
 
-- `src/store.jsx` — `AppStoreProvider`, `useStore()`. Дії: `addAppointment`, `updateAppointment`, `deleteAppointment`, `cancelAppointment`, `saveClient`, `deleteClient`, `savePet`, `deletePet`, `saveDoctor`, `deleteDoctor`, `saveService`, `deleteService`, `saveArticle`, `deleteArticle`, `updateSettings`, `login`, `logout`, `register`, `addMessage`, `updateMessage`, `deleteMessage`, `acceptCookies`, `resetState`, `importState`. Helpers: `currentYear()`, `formatDateUk()`, `todayIso()`.
+### Фронтенд (`src/`)
+- `src/store.jsx` — `AppStoreProvider`, `useStore()`. Дані в localStorage. Auth-стан — в пам'яті (access token у module-level `_accessToken`). Ключові actions: `addAppointment`, `updateAppointment`, `deleteAppointment`, `cancelAppointment`, `saveClient`, `deleteClient`, `savePet`, `deletePet`, `saveDoctor`, `deleteDoctor`, `saveService`, `deleteService`, `saveArticle`, `deleteArticle`, `updateSettings`, `setCurrentUser`, `setAccessToken`, `getAccessToken`, `markSessionChecked`, `logout`, `addMessage`, `updateMessage`, `deleteMessage`, `acceptCookies`, `resetState`, `importState`. Helpers: `currentYear()`, `formatDateUk()`, `todayIso()`.
 - Захист від конфліктів: dedup слотів (date+time+doctor); відмова на минулі дати/поза-графікові слоти (опція `force: true` для адмінського обходу); заборона видалення сутності з активними звʼязками.
 - Структура файлів:
-  - `src/App.jsx` — роутер, Header, Footer, LegalModal, QuickBookingModal, LoginModal, CookieBanner, тема.
-  - `src/components.jsx` — `Icon`, `Logo`, `PetIllustration`, `Avatar`, `StatusPill`, `Stars`.
+  - `src/App.jsx` — роутер, Header, Footer, LegalModal, QuickBookingModal, LoginModal, OnboardingModal, AdminLoginModal, CookieBanner, тема.
+  - `src/components.jsx` — `Icon`, `Logo`, `PetIllustration`, `Avatar`, `StatusPill`, `Stars`, `calcPetAge`, `petSpeciesColor`, `petSpeciesKind`.
   - `src/pages-public.jsx` — Home, Services, ServiceDetail.
-  - `src/pages-public-2.jsx` — Booking, About, Contacts, Prices, Articles, Article, Profile.
+  - `src/pages-public-2.jsx` — Booking, About, Contacts, Prices, Articles, Article, ProfilePage.
   - `src/pages-admin.jsx` — увесь адмінський функціонал (11 сторінок).
   - `src/store.jsx` — стан + persistence.
   - `src/data.js` — seed-дані.
   - `src/styles.css` — стилі, CSS-змінні палітри, мобільні медіа-запити.
   - `src/logo-ultravet.svg` — оригінальний SVG бренду.
+
+### Бекенд (`api/`)
+```
+api/
+├── _lib/
+│   ├── db.js           — Supabase client (singleton)
+│   ├── jwt.js          — sign/verify access + refresh tokens (jose)
+│   └── hash.js         — bcrypt helpers (bcryptjs)
+├── auth/
+│   ├── register.js     — POST /api/auth/register → { accessToken, user, isNew }
+│   ├── login.js        — POST /api/auth/login → { accessToken, user } + Set-Cookie
+│   ├── refresh.js      — POST /api/auth/refresh (httpOnly cookie) → { accessToken, user }
+│   │                     DELETE /api/auth/refresh → logout (clear cookie)
+│   ├── telegram.js     — POST /api/auth/telegram (HMAC-SHA256 verify)
+│   └── viber-verify.js — POST /api/auth/viber-verify (OTP check)
+├── users/
+│   └── me.js           — PATCH /api/users/me (Bearer JWT) → оновлює name/email/phone у Supabase
+└── webhooks/
+    └── viber.js        — POST /api/webhooks/viber (Viber Bot events + OTP send)
+```
+
+### База даних (Supabase / `supabase/schema.sql`)
+```sql
+users (id, name, email, phone, password_hash, telegram_id, telegram_username, viber_id, role, created_at)
+refresh_tokens (id, user_id, token_hash, expires_at, created_at)
+otp_codes (id, viber_id, code_hash, expires_at, attempts, created_at)
+```
+
+### Auth-токени
+- **Access token**: JWT, 15 хвилин, зберігається в пам'яті (`_accessToken` у `store.jsx`).
+- **Refresh token**: httpOnly cookie, 30 днів, ротується при кожному `/api/auth/refresh`.
+- `sessionChecked: boolean` — стан у store; `false` доки refresh call не завершився (запобігає flash login modal).
 
 ## Зроблено ✅
 
