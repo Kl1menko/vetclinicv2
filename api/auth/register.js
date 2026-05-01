@@ -60,5 +60,5 @@ export default async function handler(req, res) {
   });
 
   res.setHeader('Set-Cookie', `refreshToken=${refreshToken}; ${refreshCookieOptions()}`);
-  res.status(201).json({ accessToken, user });
+  res.status(201).json({ accessToken, user, isNew: true });
 }

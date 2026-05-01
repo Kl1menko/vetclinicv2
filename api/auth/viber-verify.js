@@ -34,6 +34,7 @@ export default async function handler(req, res) {
 
   await db.from('otp_codes').delete().eq('id', otp.id);
 
+  let isNew = false;
   let { data: user } = await db
     .from('users')
     .select('id, name, email, phone, role, viber_id, created_at')
@@ -41,6 +42,7 @@ export default async function handler(req, res) {
     .single();
 
   if (!user) {
+    isNew = true;
     const displayName = name?.trim() || 'Клієнт Viber';
     const { data: created, error } = await db
       .from('users')
@@ -61,5 +63,5 @@ export default async function handler(req, res) {
   });
 
   res.setHeader('Set-Cookie', `refreshToken=${refreshToken}; ${refreshCookieOptions()}`);
-  res.status(200).json({ accessToken, user });
+  res.status(200).json({ accessToken, user, isNew });
 }

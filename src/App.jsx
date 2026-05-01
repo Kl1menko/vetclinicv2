@@ -791,7 +791,7 @@ const LoginModal = ({ onClose, onSuccess }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Невірний код");
-      onSuccess(data.user);
+      onSuccess(data.user, data.isNew, data.accessToken);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -838,7 +838,7 @@ const LoginModal = ({ onClose, onSuccess }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Невірний код");
-      onSuccess(data.user);
+      onSuccess(data.user, data.isNew, data.accessToken);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -1087,6 +1087,166 @@ const AdminLoginModal = ({ onClose, onConfirm }) => {
   );
 };
 
+// ─── Onboarding wizard ───────────────────────────────────────────────────────
+const PET_SPECIES = [
+  { k: "Кіт", icon: "🐱" }, { k: "Пес", icon: "🐶" },
+  { k: "Кролик", icon: "🐰" }, { k: "Птах", icon: "🐦" },
+  { k: "Гризун", icon: "🐹" }, { k: "Рептилія", icon: "🦎" },
+  { k: "Інше", icon: "🐾" },
+];
+
+const OnboardingModal = ({ user, accessToken, onDone }) => {
+  const store = useStore();
+  const [step, setStep] = uS(1);
+  const [profile, setProfile] = uS({ name: user.name || "", email: user.email || "", phone: user.phone || "" });
+  const [pet, setPet] = uS({ name: "", species: "", breed: "", age: "" });
+  const [saving, setSaving] = uS(false);
+  const [error, setError] = uS("");
+  const total = 3;
+
+  const upProfile = (k, v) => setProfile(p => ({ ...p, [k]: v }));
+  const upPet = (k, v) => setPet(p => ({ ...p, [k]: v }));
+
+  const isAutoName = (n) => /^(Telegram|Viber)\s+\d+$/.test(n);
+
+  const saveProfile = async () => {
+    if (!profile.name.trim() || isAutoName(profile.name)) return setError("Введіть своє імʼя");
+    setSaving(true); setError("");
+    try {
+      await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+        credentials: "include",
+        body: JSON.stringify(profile),
+      });
+      store.setCurrentUser({ ...user, ...profile });
+      setStep(2);
+    } catch { setError("Помилка збереження"); }
+    finally { setSaving(false); }
+  };
+
+  const savePet = () => {
+    if (pet.name.trim() && pet.species) {
+      store.savePet({ name: pet.name.trim(), species: pet.species, breed: pet.breed, age: Number(pet.age) || 0, owner: profile.name.trim() || user.name });
+    }
+    setStep(3);
+  };
+
+  const stepLabel = ["", "Ваші дані", "Улюбленець", "Готово"][step];
+
+  return (
+    <div className="backdrop">
+      <div className="card pop" onClick={e => e.stopPropagation()}
+        style={{ padding: "40px 32px 32px", maxWidth: 460, width: "100%", position: "relative" }}
+      >
+        {/* Progress */}
+        <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 32 }}>
+          {[1, 2, 3].map((s, i) => (
+            <React.Fragment key={s}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: 700, fontSize: 14, background: step >= s ? "var(--teal-600)" : "var(--ink-100)", color: step >= s ? "#fff" : "var(--ink-400)", transition: "background .3s" }}>
+                  {step > s ? "✓" : s}
+                </div>
+                <div style={{ fontSize: 11, color: step === s ? "var(--teal-700)" : "var(--ink-400)", fontWeight: step === s ? 600 : 400, whiteSpace: "nowrap" }}>
+                  {["Ваші дані", "Улюбленець", "Готово"][i]}
+                </div>
+              </div>
+              {i < 2 && <div style={{ flex: 1, height: 2, background: step > s ? "var(--teal-600)" : "var(--ink-100)", margin: "0 6px", marginBottom: 20, transition: "background .3s" }} />}
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Step 1 — profile */}
+        {step === 1 && (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Розкажіть про себе</div>
+              <div style={{ fontSize: 14, color: "var(--ink-400)" }}>Ці дані потрібні для запису до лікаря</div>
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--ink-500)", fontWeight: 600, display: "block", marginBottom: 6 }}>Імʼя та прізвище *</label>
+                <input className="input" placeholder="Іван Коваленко" autoComplete="name" value={profile.name} onChange={e => upProfile("name", e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--ink-500)", fontWeight: 600, display: "block", marginBottom: 6 }}>Телефон</label>
+                <input className="input" placeholder="+380 XX XXX XX XX" autoComplete="tel" inputMode="tel" value={profile.phone} onChange={e => upProfile("phone", e.target.value)} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--ink-500)", fontWeight: 600, display: "block", marginBottom: 6 }}>Email</label>
+                <input className="input" placeholder="your@email.com" autoComplete="email" inputMode="email" value={profile.email} onChange={e => upProfile("email", e.target.value)} />
+              </div>
+            </div>
+            {error && <div className="field-error">{error}</div>}
+            <button className="btn btn-primary" onClick={saveProfile} disabled={saving}>
+              {saving ? "Зберігаємо…" : "Далі →"}
+            </button>
+          </div>
+        )}
+
+        {/* Step 2 — pet */}
+        {step === 2 && (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Ваш улюбленець</div>
+              <div style={{ fontSize: 14, color: "var(--ink-400)" }}>Необов'язково — можна додати пізніше в кабінеті</div>
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--ink-500)", fontWeight: 600, display: "block", marginBottom: 8 }}>Вид тварини</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                  {PET_SPECIES.map(s => (
+                    <button key={s.k} type="button" onClick={() => upPet("species", s.k)}
+                      style={{ border: `2px solid ${pet.species === s.k ? "var(--teal-600)" : "var(--ink-100)"}`, borderRadius: 10, padding: "10px 6px", background: pet.species === s.k ? "var(--teal-50)" : "var(--paper)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, transition: "border-color .15s" }}
+                    >
+                      <span style={{ fontSize: 22 }}>{s.icon}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: pet.species === s.k ? "var(--teal-700)" : "var(--ink-500)" }}>{s.k}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "var(--ink-500)", fontWeight: 600, display: "block", marginBottom: 6 }}>Імʼя тварини</label>
+                <input className="input" placeholder="Барсік, Рекс…" value={pet.name} onChange={e => upPet("name", e.target.value)} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--ink-500)", fontWeight: 600, display: "block", marginBottom: 6 }}>Порода</label>
+                  <input className="input" placeholder="Мейн-кун…" value={pet.breed} onChange={e => upPet("breed", e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: "var(--ink-500)", fontWeight: 600, display: "block", marginBottom: 6 }}>Вік (років)</label>
+                  <input className="input" placeholder="2" inputMode="numeric" value={pet.age} onChange={e => upPet("age", e.target.value.replace(/\D/g, ""))} />
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <button className="btn btn-ghost" onClick={savePet}>Пропустити</button>
+              <button className="btn btn-primary" onClick={savePet} disabled={!pet.species || !pet.name.trim()}>Додати →</button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 — done */}
+        {step === 3 && (
+          <div style={{ display: "grid", gap: 20, textAlign: "center", padding: "16px 0" }}>
+            <div style={{ fontSize: 56 }}>🎉</div>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Вітаємо в UltraVet!</div>
+              <div style={{ fontSize: 15, color: "var(--ink-500)", lineHeight: 1.6 }}>
+                Акаунт налаштовано. Тепер ви можете записатись до лікаря, переглядати історію прийомів та керувати даними своїх тварин.
+              </div>
+            </div>
+            <button className="btn btn-primary" style={{ fontSize: 16, padding: "14px" }} onClick={onDone}>
+              Перейти до кабінету →
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Cookie banner
 const CookieBanner = ({ onAccept }) => (
   <div
@@ -1154,6 +1314,7 @@ export default function App() {
   const [showAdminLogin, setShowAdminLogin] = uS(false);
   const [legalKind, setLegalKind] = uS(null);
   const [toast, setToast] = uS(null);
+  const [onboarding, setOnboarding] = uS(null); // { user, accessToken }
 
   // Restore session from httpOnly refresh cookie on mount
   uE(() => {
@@ -1493,11 +1654,26 @@ export default function App() {
       {showLogin && (
         <LoginModal
           onClose={() => setShowLogin(false)}
-          onSuccess={(user) => {
+          onSuccess={(user, isNew, accessToken) => {
             store.setCurrentUser(user);
             setShowLogin(false);
+            if (isNew) {
+              setOnboarding({ user, accessToken });
+            } else {
+              go("profile");
+              showToast("Ласкаво просимо!");
+            }
+          }}
+        />
+      )}
+      {onboarding && (
+        <OnboardingModal
+          user={onboarding.user}
+          accessToken={onboarding.accessToken}
+          onDone={() => {
+            setOnboarding(null);
             go("profile");
-            showToast("Ласкаво просимо!");
+            showToast("Ласкаво просимо в UltraVet!");
           }}
         />
       )}
