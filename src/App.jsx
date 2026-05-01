@@ -899,66 +899,118 @@ const LoginModal = ({ onClose, onSuccess }) => {
         )}
 
         {method === "telegram" && (
-          <div style={{ display: "grid", gap: 16 }}>
-            <h2 style={{ fontSize: 22 }}>Вхід через Telegram</h2>
-            <div style={{ background: "var(--ink-50)", borderRadius: 10, padding: 16, fontSize: 14, color: "var(--ink-600)", lineHeight: 1.6 }}>
-              <strong>Крок 1:</strong> Відкрийте бота і надішліть <code>/start</code>
-              <div style={{ marginTop: 10 }}>
-                <a
-                  href={`https://t.me/${TG_BOT}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-primary btn-sm"
-                  style={{ display: "inline-flex", textDecoration: "none" }}
-                >
-                  Відкрити @{TG_BOT || "ultravet_bot"} у Telegram
-                </a>
+          <div style={{ display: "grid", gap: 20 }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg,#2AABEE,#229ED9)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.69 7.96c-.12.58-.48.72-.96.45l-2.64-1.95-1.27 1.23c-.14.14-.26.26-.54.26l.19-2.72 4.94-4.47c.22-.19-.05-.3-.33-.11L7.9 14.49l-2.57-.8c-.56-.18-.57-.56.12-.82l10.02-3.86c.47-.17.88.11.17.79z"/></svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 17 }}>Вхід через Telegram</div>
+                <div style={{ fontSize: 13, color: "var(--ink-400)" }}>Безпечно через офіційний бот</div>
               </div>
             </div>
+
+            {/* Steps */}
             <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ fontSize: 13, color: "var(--ink-500)" }}>Крок 2: введіть 6-значний код від бота</label>
-              <input
-                className="input"
-                placeholder="123456"
-                inputMode="numeric"
-                maxLength={6}
-                value={tgCode}
-                onChange={(e) => setTgCode(e.target.value.replace(/\D/g, ""))}
-              />
+              {/* Step 1 */}
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>1</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Відкрийте бот і надішліть <code style={{ background: "var(--ink-100)", padding: "1px 5px", borderRadius: 4 }}>/start</code></div>
+                  <a
+                    href={`https://t.me/${TG_BOT || "ultravet_bot"}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, background: "linear-gradient(135deg,#2AABEE,#229ED9)", color: "#fff", fontWeight: 600, fontSize: 14, textDecoration: "none" }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.69 7.96c-.12.58-.48.72-.96.45l-2.64-1.95-1.27 1.23c-.14.14-.26.26-.54.26l.19-2.72 4.94-4.47c.22-.19-.05-.3-.33-.11L7.9 14.49l-2.57-.8c-.56-.18-.57-.56.12-.82l10.02-3.86c.47-.17.88.11.17.79z"/></svg>
+                    @{TG_BOT || "ultravet_bot"}
+                  </a>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: "var(--ink-100)", margin: "2px 0" }} />
+
+              {/* Step 2 */}
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>2</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Введіть 6-значний код від бота</div>
+                  <input
+                    className="input"
+                    placeholder="• • • • • •"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={tgCode}
+                    onChange={(e) => setTgCode(e.target.value.replace(/\D/g, ""))}
+                    style={{ letterSpacing: tgCode ? "0.3em" : undefined, fontSize: tgCode ? 20 : undefined, textAlign: tgCode ? "center" : undefined }}
+                  />
+                </div>
+              </div>
             </div>
+
             {error && <div className="field-error">{error}</div>}
-            <button className="btn btn-primary" onClick={submitTelegram} disabled={loading || tgCode.length < 6}>
-              {loading ? "Перевірка…" : "Підтвердити"}
+            <button className="btn btn-primary" onClick={submitTelegram} disabled={loading || tgCode.length < 6}
+              style={{ opacity: tgCode.length < 6 ? 0.5 : 1, transition: "opacity .2s" }}
+            >
+              {loading ? "Перевірка…" : "Увійти"}
             </button>
           </div>
         )}
 
         {method === "viber" && (
-          <div style={{ display: "grid", gap: 16 }}>
-            <h2 style={{ fontSize: 22 }}>Вхід через Viber</h2>
-            <div style={{ background: "var(--ink-50)", borderRadius: 10, padding: 16, fontSize: 14, color: "var(--ink-600)", lineHeight: 1.6 }}>
-              <strong>Крок 1:</strong> Відкрийте бот у Viber та надішліть <code>/start</code>
-              <div style={{ marginTop: 10 }}>
-                <a
-                  href={`viber://pa?chatURI=${VIBER_BOT}`}
-                  className="btn btn-primary btn-sm"
-                  style={{ display: "inline-flex", textDecoration: "none" }}
-                >
-                  Відкрити @{VIBER_BOT} у Viber
-                </a>
+          <div style={{ display: "grid", gap: 20 }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg,#8B5CF6,#7C3AED)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M20.94 11c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm0-11c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 17 }}>Вхід через Viber</div>
+                <div style={{ fontSize: 13, color: "var(--ink-400)" }}>Отримайте код у Viber-боті</div>
               </div>
             </div>
+
+            {/* Steps */}
             <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ fontSize: 13, color: "var(--ink-500)" }}>Крок 2: введіть 6-значний код з бота</label>
-              <input
-                className="input"
-                placeholder="123456"
-                inputMode="numeric"
-                maxLength={6}
-                value={viberCode}
-                onChange={(e) => setViberCode(e.target.value.replace(/\D/g, ""))}
-              />
+              {/* Step 1 */}
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>1</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Відкрийте бот у Viber і надішліть <code style={{ background: "var(--ink-100)", padding: "1px 5px", borderRadius: 4 }}>/start</code></div>
+                  <a
+                    href={`viber://pa?chatURI=${VIBER_BOT}`}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, background: "linear-gradient(135deg,#8B5CF6,#7C3AED)", color: "#fff", fontWeight: 600, fontSize: 14, textDecoration: "none" }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20.94 11c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm0-11c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                    @{VIBER_BOT}
+                  </a>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: "var(--ink-100)", margin: "2px 0" }} />
+
+              {/* Step 2 */}
+              <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--teal-600)", color: "#fff", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>2</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Введіть 6-значний код з бота</div>
+                  <input
+                    className="input"
+                    placeholder="• • • • • •"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={viberCode}
+                    onChange={(e) => setViberCode(e.target.value.replace(/\D/g, ""))}
+                    style={{ letterSpacing: viberCode ? "0.3em" : undefined, fontSize: viberCode ? 20 : undefined, textAlign: viberCode ? "center" : undefined }}
+                  />
+                </div>
+              </div>
             </div>
+
             {error && <div className="field-error">{error}</div>}
             <button className="btn btn-primary" onClick={submitViber} disabled={loading || viberCode.length < 6}>
               {loading ? "Перевірка…" : "Підтвердити"}

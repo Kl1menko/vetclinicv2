@@ -488,14 +488,21 @@ img, svg, video, canvas, iframe { max-width: 100%; }
   /* Trim huge inline paddings */
   [style*="padding:56px 56px"] { padding: 32px 22px !important; }
 
-  /* Modals as bottom-sheet */
-  .backdrop { padding: 0 !important; align-items: flex-end !important; }
+  /* Modals — full-screen on mobile, content centered */
+  .backdrop {
+    padding: 0 !important;
+    align-items: center !important;
+  }
   .backdrop > div {
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 92vh;
+    min-height: 100dvh;
+    max-height: 100dvh;
     overflow-y: auto;
-    border-radius: 18px 18px 0 0 !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
   }
 
   /* Admin */
