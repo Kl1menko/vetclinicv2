@@ -1036,7 +1036,8 @@ img, svg, video, canvas, iframe { max-width: 100%; }
   }
 
   /* Content padding on mobile */
-  .profile-main { padding: 16px 0; }
+  .profile-main { padding: 16px 0 0; }
+  div[data-screen-label="Profile"] .container { padding-left: 20px !important; padding-right: 20px !important; }
   .profile-content-title { font-size: 18px; }
 
   /* Appointment card — 2 col on mobile */
