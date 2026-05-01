@@ -2,18 +2,49 @@ import { randomInt, createHash } from 'crypto';
 import { getDb } from '../_lib/db.js';
 import { cors } from '../_lib/cors.js';
 
-async function sendMessage(chatId, text) {
-  const token = process.env.TG_BOT_TOKEN;
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+const TOKEN = () => process.env.TG_BOT_TOKEN;
+
+async function tgApi(method, body) {
+  const res = await fetch(`https://api.telegram.org/bot${TOKEN()}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+const CODE_KEYBOARD = {
+  keyboard: [[{ text: '🔑 Отримати код для входу' }]],
+  resize_keyboard: true,
+  persistent: true,
+};
+
+async function sendCode(chatId) {
+  const code = String(randomInt(100000, 999999));
+  const codeHash = createHash('sha256').update(code).digest('hex');
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  const db = getDb();
+  await db.from('otp_codes').delete().eq('telegram_id', String(chatId));
+  await db.from('otp_codes').insert({
+    telegram_id: String(chatId),
+    code_hash: codeHash,
+    expires_at: expiresAt,
+    attempts: 0,
+  });
+
+  await tgApi('sendMessage', {
+    chat_id: chatId,
+    text: `🐾 <b>UltraVet</b> — ваш код для входу:\n\n<code>${code}</code>\n\n<i>Введіть його на сайті. Дійсний 10 хвилин.</i>`,
+    parse_mode: 'HTML',
+    reply_markup: CODE_KEYBOARD,
   });
 }
 
 export default async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method === 'GET') return res.status(200).send('OK');
   if (req.method !== 'POST') return res.status(405).end();
 
   let update;
@@ -29,27 +60,21 @@ export default async function handler(req, res) {
   const chatId = message.chat.id;
   const text = String(message.text || '').trim();
 
-  if (text.startsWith('/start')) {
-    const code = String(randomInt(100000, 999999));
-    const codeHash = createHash('sha256').update(code).digest('hex');
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    const db = getDb();
-    await db.from('otp_codes').delete().eq('telegram_id', String(chatId));
-    await db.from('otp_codes').insert({
-      telegram_id: String(chatId),
-      code_hash: codeHash,
-      expires_at: expiresAt,
-      attempts: 0,
+  if (text.startsWith('/start') || text === '🔑 Отримати код для входу') {
+    await sendCode(chatId);
+  } else if (text === '/help' || text === '/start@' + (process.env.TG_BOT_USERNAME || '')) {
+    await tgApi('sendMessage', {
+      chat_id: chatId,
+      text: `🐾 <b>UltraVet — вхід на сайт</b>\n\nНатисніть кнопку нижче або надішліть /start щоб отримати 6-значний код для входу на сайт <b>ultravet.ua</b>`,
+      parse_mode: 'HTML',
+      reply_markup: CODE_KEYBOARD,
     });
-
-    await sendMessage(chatId,
-      `🐾 <b>UltraVet</b>\n\nВаш код для входу на сайт:\n\n<code>${code}</code>\n\nВведіть його у вікні браузера. Код дійсний 10 хвилин.`
-    );
   } else {
-    await sendMessage(chatId,
-      `Надішліть /start щоб отримати код для входу на сайт ultravet.ua`
-    );
+    await tgApi('sendMessage', {
+      chat_id: chatId,
+      text: `Натисніть кнопку «🔑 Отримати код для входу» щоб увійти на сайт ultravet.ua`,
+      reply_markup: CODE_KEYBOARD,
+    });
   }
 
   res.json({ ok: true });
